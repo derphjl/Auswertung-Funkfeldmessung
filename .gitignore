@@ -1,3 +1,6 @@
+# Results are to be kept internally, sorry
+/results/*
+
 # Logs
 logs
 *.log
