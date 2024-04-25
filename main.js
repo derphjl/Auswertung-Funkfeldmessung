@@ -162,46 +162,7 @@ try {
       point.snapshots.push(snapshot); //push the current snapshot into the array of snapshots in the point
     } // * end of snapshot *
     site.points.push(point); //push the current measurement point into the array of points in site
-  } // * end of point * 
-  console.log(site.points[1].snapshots[1].traces[1].parameters['Trace Mode']);
-
-  // console.log("The resulting object 'Site':");
-  // console.log(site);
-  
-  
-  
-  //       console.log("A CSV with a good filename was found. Start analysis...");
-  //       
-  //       let indexOfFrequency = 0; //indexOfFrequency describes the position of the frequency value in each line, thus it is reset when a new CSV is loaded
-  //       let pushingAllowed = 0; //pushing the results into the results object should only start after the Freqency Heading has been passed
-  
-  //       for (let line of linesOfFile) {     //to read the Data for the Max Hold Trace, find the index position of "Trace Mode,Max Hold". Count the commas up to it to use in regex later.
-  //         let elementsOfLine = line.split(","); //split the lines into single elements at the ,
-  
-  //         if (elementsOfLine.indexOf('Max Hold') >= 0) {   //we will derive the indexOfFreuqncy to be one less than the position of "Max Hold"
-  //           console.log("Index is " + elementsOfLine.indexOf('Max Hold') + " thus Freq start at Index " + (elementsOfLine.indexOf('Max Hold') -1)); 
-  //           indexOfFrequency = (elementsOfLine.indexOf('Max Hold') - 1);
-  //           console.log("Index of Frequency is now set to " + indexOfFrequency);
-  //         };
-  
-  //         pushingAllowed ? measurementResults[measurementPoint].Results[elementsOfLine[indexOfFrequency]] = elementsOfLine[indexOfFrequency + 1] : '';
-  
-  
-  //         elementsOfLine[indexOfFrequency]?.match(new RegExp(/^Frequency \[Hz]$/)) ? pushingAllowed = true : '' ;
-  
-  //       }
-  
-  //       // console.log(measurementResults[measurementPoint].Results);
-  
-  //     }
-  //     //if the file is not a CSV we are looking for, we drop down here
-  //   }
-  // }
-  
-  
-  
-  
-  
+  } // * end of point *   
 } catch (error) {
   console.error('there was an error:', error.message);
 }
