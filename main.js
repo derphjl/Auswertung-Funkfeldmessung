@@ -2,7 +2,7 @@ import { match } from 'node:assert';
 import { readdir } from 'node:fs/promises';
 import { readFile } from 'node:fs/promises';
 
-const siteReference = "Bundespresseamt";
+const siteReference = "Gebäude X";
 
 // ## Type definitions. Site -> Point -> Snapshot-> Trace -> Record
 
