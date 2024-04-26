@@ -162,17 +162,13 @@ try {
         }
         
         for (let lineOfFile of linesOfFile.slice(splitIndex + 2)) {
-          
           let elementsOfLine = lineOfFile.split(`,`);
-          let singularFrequency = elementsOfLine[dataIndex];
-          let singularAmplitude = elementsOfLine[dataIndex + 1];
-          
           /**
           * @type {Record}
           */
           let record = {
-            frequency : singularFrequency,
-            amplitude : singularAmplitude,
+            frequency : elementsOfLine[dataIndex];
+            amplitude : elementsOfLine[dataIndex + 1];
           };
           trace.records.push(record);
         }
@@ -185,16 +181,13 @@ try {
   } // * end of point *
   console.log("🎉 All points transfered into defined data structure!");   
   
+  console.log("Now, as an example, a bit of data:")
   console.log(site.points[3].snapshots[6].traces[1])
   
   //TODO: Work out analysis of the data
   
-  
   //TODO: Export the Analysis in a sensical way
-  
-  
+
 } catch (error) {
   console.error('there was an error:', error.message);
 }
-
-
