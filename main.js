@@ -167,8 +167,8 @@ try {
           * @type {Record}
           */
           let record = {
-            frequency : elementsOfLine[dataIndex];
-            amplitude : elementsOfLine[dataIndex + 1];
+            frequency : elementsOfLine[dataIndex],
+            amplitude : elementsOfLine[dataIndex + 1],
           };
           trace.records.push(record);
         }
