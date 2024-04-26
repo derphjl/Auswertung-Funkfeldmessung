@@ -143,6 +143,7 @@ try {
         for (let lineOfFile of linesOfFile.slice(0,splitIndex)) {
           let elementsOfLine = lineOfFile.split(`,`);
           let key = elementsOfLine[dataIndex];
+          //TODO: work out a better solution here. smashing the value and its unit is not elegant.
           let value = ((elementsOfLine[dataIndex + 1] + " " +  elementsOfLine[dataIndex + 2]).trim());
           trace.parameters[key] = value;
         }
@@ -171,7 +172,7 @@ try {
   } // * end of point *
   console.log("🎉 All points transfered into defined data structure!");   
 
-  //
+  console.log(site.points[3].snapshots[6].traces[1].parameters)
 
   //TODO: Work out analysis of the data
 
