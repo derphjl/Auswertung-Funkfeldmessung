@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 const siteReference = "Gebäude X";
 
-// ## Type definitions. Site -> Point -> Snapshot-> Trace -> Record
+//## Type definitions. Site -> Point -> Snapshot-> Trace -> Record
 
 // The Record is a Pairing of a single Frequency and Amplitude
 /**
@@ -57,7 +57,7 @@ const siteReference = "Gebäude X";
 
 try {
   
-  // ### SECTION 0: Initialize the environment ###
+  //### SECTION 0: Initialize the environment ###
   console.log('📡 Analysis of Radio Field Measurements 🔍');
   
   /**
@@ -68,7 +68,7 @@ try {
     points: [],
   };
   
-  // ### SECTION 1: Count the Folders in /results and save the value ###
+  //### SECTION 1: Count the Folders in /results and save the value ###
   console.log("📂 Reading folder '/results'...");
   
   const directoryEntries = await readdir(`./results`, { withFileTypes: true });
@@ -85,7 +85,7 @@ try {
   
   console.log("☝️  " + points.length + " points were found. Now going through them...");
 
-  // ### Section 2: Start a Loop: Commit to one Folder, get its Name and save it. Iterate. ###
+  //### Section 2: Start a Loop: Commit to one Folder, get its Name and save it. Iterate. ###
   for (let currentPoint of points) {
     // call the point type as const point and initialize it with the current point string
     /**
@@ -101,10 +101,9 @@ try {
     const directoryEntries = await readdir(`./results/${currentPoint}`);
     const snapshots = directoryEntries.filter((entry) => entry.match(new RegExp(/^\w{3}\d{4}.csv$/)));
     
+    //### Section 3: Within a Point, all files that match the above regex qualify as a snapshort. Iterate through the snaphots. ###
     for (let currentSnapshot of snapshots) {
-      // call the point type as const point and initialize it with the current point string
-      // console.log("Current Snapshot: " + currentSnapshot);
-      
+      // call the snapshot type as sonst snapshot and initialize it with the currentSnapshot as refernce. This is likely a number, but could also be a name
       /**
       * @type {Snapshot}
       */
@@ -113,20 +112,23 @@ try {
         traces: [],
       }
 
+      //### Section 4: A Snapshot is a CSV File that is first split into lines ###
       let linesOfFile = ((await readFile(`./results/${currentPoint}/${currentSnapshot}`, { encoding: 'utf8' })).trim()).split('\n'); //read the file and split it into lines
 
-      // const sweepsInfoArray = [...linesOfFile[0].matchAll("Sweep")]
-      // console.log(sweepsInfoArray);
-
+      //### Section 5: To fetch the ammount and position of Traces, seach for the Keyword "Sweep" and save the correct positions ###
+      //TODO: The more elegant solution would maybe be to check the split aray of elements in a line and check for a pattern of DATA - DATA - EMPTY, returning the position of the first DATA? However, this will work for now!
       const occurencesOfSweep = linesOfFile[0].split(`,`).filter((entry) => entry.match(new RegExp(/Sweep/)));
-      //occurencesOfSweep is now an array of string containing all occurences of the word "Sweep" in the first line of the file
+      //occurencesOfSweep is now an array of string containing all occurences of the word "Sweep" (literally as a string containing "Sweep" at this point) in the first line of the file
       let dataIndices = []
       for (let occurenceOfSweep of occurencesOfSweep){  //for any occurence of the word "sweep", get the index position in the line, subtract one, and push it into the aray "dataIndicies"
         dataIndices.push(linesOfFile[0].split(`,`).indexOf(occurenceOfSweep) - 1);
       }
-      //dataIndices is now an array containing the starting positions for the data of each trace
+      //dataIndices is now an array containing the starting positions for the data of each trace.
 
+      //## Section 6: With dataIndex now representing a single Trace, we start extracting the Data for the trace.
       for (let dataIndex of dataIndices) {
+      //With dataIndex now being the starting point of the relevant Data in this loop/Trace, begin a Trace.
+      //in scope, dataInxdex describes the trace start position, meaning for every line, the relevant points are, in the case of the head, dataIndex as the key, dataindex + 1 as the value and  dataIndex + 2 as the unit which shall be reduced into the value (it's probably never going to be used anyway)
       /**
       * @type {Trace}
       */
@@ -134,9 +136,11 @@ try {
         parameters : {},
         records : [],
         }
-        //in scope, dataInxdex describes the trace start position, meaning for every line, the relevant points are, in the case of the head, dataIndex as the key, dataindex + 1 as the value and  dataIndex + 2 as the unit which shall be reduced into the value (it's probably never going to be used anyway)
+        //splitIndex is the line before the line containg the keyword "Frequency [Hz]" and marks the vertical split between the parameters-part and the records-part of the trace
         let splitIndex = linesOfFile.findIndex((singleLine) => singleLine.match(new RegExp(/.*Frequency \[Hz].*/))) - 1; //first we find out where the key "Frequency [Hz] is. This splits Head and Data.
-        for (let lineOfFile of linesOfFile.slice(0,splitIndex)) { //In the Data-Portion (start up to splitIndex) the key is in the first column, the value in the second and the unit in the third. Wer are producing key-value-pairs, so the unit gets smashed onto the value if applicable
+        
+        //only working within the parameters-portion of the trace: the key is in the first column, the value in the second and the unit in the third. Wer are producing key-value-pairs, so the unit gets smashed onto the value if applicable.
+        for (let lineOfFile of linesOfFile.slice(0,splitIndex)) {
           let elementsOfLine = lineOfFile.split(`,`);
           let key = elementsOfLine[dataIndex];
           let value = (elementsOfLine[dataIndex + 1] + elementsOfLine[dataIndex + 2]);
@@ -163,10 +167,11 @@ try {
       point.snapshots.push(snapshot); //push the current snapshot into the array of snapshots in the point
     } // * end of snapshot *
     site.points.push(point); //push the current measurement point into the array of points in site
-    console.log("✅ Data for Point " + currentPoint + " done, counting " + snapshots.length + " snapshots.")
+    console.log("✅ Data for Point " + currentPoint + " with " + snapshots.length + " snapshots imported!")
   } // * end of point *
   console.log("🎉 All points transfered into defined data structure!");   
 
+  //
 
   //TODO: Work out analysis of the data
 
