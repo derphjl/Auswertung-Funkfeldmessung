@@ -177,12 +177,12 @@ try {
       point.snapshots.push(snapshot); //push the current snapshot into the array of snapshots in the point
     } // * end of snapshot *
     site.points.push(point); //push the current measurement point into the array of points in site
-    console.log("✅ Data for Point " + currentPoint + " with " + snapshots.length + " snapshots imported!")
+    console.log("✅ Data for Point " + currentPoint + " with " + snapshots.length + " snapshots imported!");
   } // * end of point *
   console.log("🎉 All points transfered into defined data structure!");   
   
   console.log("Now, as an example, a bit of data:")
-  console.log(site.points[3].snapshots[6].traces[1])
+  console.log(site.points[3].snapshots[6].traces[1]);
   
   //TODO: Work out analysis of the data
   
