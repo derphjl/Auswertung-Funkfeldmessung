@@ -1,6 +1,8 @@
 # Auswertung-Funkfeldmessung
  
-# Conversion of Exports into useful data structure
+This script structures and analyses Radio Field Measurements taken with an R&S FPH or any other Device adhering to the same data structure in CSV exports.
+
+# Philosophy of Measurements and Conversion of Exports into useful data structure
 
 The CSV exports have to be sorted into measurement points by hand.
 
