@@ -1,4 +1,3 @@
-import { match } from 'node:assert';
 import { readdir } from 'node:fs/promises';
 import { readFile } from 'node:fs/promises';
 
@@ -59,7 +58,7 @@ const siteReference = "Gebäude X";
 try {
   
   // ### SECTION 0: Initialize the environment ###
-  console.log('## Analysis of Radio Field Measurements ##');
+  console.log('📡 Analysis of Radio Field Measurements 🔍');
   
   /**
   * @type {Site}
@@ -70,7 +69,7 @@ try {
   };
   
   // ### SECTION 1: Count the Folders in /results and save the value ###
-  console.log("Reading folder '/results'...");
+  console.log("📂 Reading folder '/results'...");
   
   const directoryEntries = await readdir(`./results`, { withFileTypes: true });
   const points = directoryEntries
@@ -84,6 +83,8 @@ try {
   });
   // now, const measurementFolders: string[] contains the folders withing /results, sorted numerically. The numerical quantity could be accessed with measurementFolders.length
   
+  console.log("☝️  " + points.length + " points were found. Now going through them...");
+
   // ### Section 2: Start a Loop: Commit to one Folder, get its Name and save it. Iterate. ###
   for (let currentPoint of points) {
     // call the point type as const point and initialize it with the current point string
@@ -162,7 +163,17 @@ try {
       point.snapshots.push(snapshot); //push the current snapshot into the array of snapshots in the point
     } // * end of snapshot *
     site.points.push(point); //push the current measurement point into the array of points in site
-  } // * end of point *   
+    console.log("✅ Data for Point " + currentPoint + " done, counting " + snapshots.length + " snapshots.")
+  } // * end of point *
+  console.log("🎉 All points transfered into defined data structure!");   
+
+
+  //TODO: Work out analysis of the data
+
+
+  //TODO: Export the Analysis in a sensical way
+
+
 } catch (error) {
   console.error('there was an error:', error.message);
 }
