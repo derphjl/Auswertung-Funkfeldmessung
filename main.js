@@ -143,7 +143,7 @@ try {
         for (let lineOfFile of linesOfFile.slice(0,splitIndex)) {
           let elementsOfLine = lineOfFile.split(`,`);
           let key = elementsOfLine[dataIndex];
-          let value = (elementsOfLine[dataIndex + 1] + elementsOfLine[dataIndex + 2]);
+          let value = ((elementsOfLine[dataIndex + 1] + " " +  elementsOfLine[dataIndex + 2]).trim());
           trace.parameters[key] = value;
         }
         
