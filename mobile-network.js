@@ -64,7 +64,6 @@ const siteReference = "Gebäude X";
 */
 
 try {
-  
   //### SECTION 0: Initialize the environment ###
   console.log('📡 Analysis of Radio Field Measurements 🔍');
   
@@ -180,16 +179,10 @@ try {
     console.log("✅ Data for Point " + currentPoint + " with " + snapshots.length + " snapshots imported!");
   } // * end of point *
   console.log("🎉 All points transfered into defined data structure!");   
-  
-  // //a nice intermediary goal, print some data you can select here
-  // console.log("Now, as an example, a bit of data:")
-  // console.log(site.points[3].snapshots[6].traces[1]);
-  
+
   /** 
-   *  ##############################################################################################
-   *  ###                                                                                        ###  
+   *  ##############################################################################################  
    *  ### IMPORT OF EXISTING DATA IS NOW DONE. FROM HERE ON, IT'S ANALYSIS AND MODIFICATION TIME ###
-   *  ###                                                                                        ###
    *  ##############################################################################################
    */ 
 
@@ -205,17 +198,21 @@ try {
             break;
           }
         }
-        
         if(traceIsRelevant) {
           let minAmplitude = trace.records.sort((firstItem, secondItem) => firstItem.amplitude - secondItem.amplitude)[0].amplitude;
           let maxAmplitude = trace.records.sort((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].amplitude;
           console.log("MaxHoldTrace @ trace " + trace.parameters[0].value + " snapshot " + snapshot.ref + " point " + point.ref + " noise floor " + minAmplitude + " dBm, max amplitude: " + maxAmplitude);
         }
-        
-
       }
     }
   }
+
+
+
+
+
+
+
   
   //TODO: Export the Analysis in a sensical way
 
