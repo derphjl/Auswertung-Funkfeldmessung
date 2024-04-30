@@ -33,6 +33,25 @@ const siteReference = "Gebäude X";
 * }}
 */
 
+/**
+* @typedef ExportNetwork
+* @type {{
+  *  ssid: string;
+  *  bssid: string;
+  *  strength: string;
+  *  channel: string;
+  *  width: string;
+  *  atpoint: string;
+  * }}
+  */
+
+/**
+* @typedef ExportNetworkList
+* @type {
+*   exportNetwork[]
+* }
+*/
+
 try {
   
   //### SECTION 0: Initialize the environment ###
@@ -78,7 +97,7 @@ try {
     
     //In case there are multiple Access Point Lists in the Folder, we will evaluate them all. To step through them, we'll reuse the snapshot logic of mobile-networks.js, but without cascading another type deep
     const directoryEntries = await readdir(`./results/${currentPoint}`);
-    const snaphots = directoryEntries.filter((entry) => entry.match(new RegExp(/^.*Access Points.*$/)));
+    const snapshots = directoryEntries.filter((entry) => entry.match(new RegExp(/^.*Access Points.*$/)));
     
     //### Section 3: Within a Point, all files that match the above regex qualify as a snapshot. Iterate through the snaphots. ###
     for (let currentSnapshot of snapshots) {
@@ -95,19 +114,17 @@ try {
         for (let j = 0; j < linesOfFile[0].split('|').length ; j++ ) {
           let key = linesOfFile[0].split('|')[j];
           let value = linesOfFile[i].split('|')[j];
-          network[key]: value;
+          network[key] = value;
         } //finished iterating the columns at this point, the network is now fully defined
         point.networks.push(network);
       } //finished the file at this point, all networks are now in the array.
     }
     site.points.push(point); //push the current measurement point into the array of points in site
-    console.log("✅ Data for Point " + currentPoint + " with " + snapshots.length + " snapshots imported!");
+    console.log(snapshots.length ? "✅ Data for Point " + currentPoint + " with " + snapshots.length + " snapshots imported!" : "❌ Data for Point " + currentPoint + " has no snapshots. Nothing imported!");
   } // * end of point *
   console.log("🎉 All points transfered into defined data structure!");   
   
-  // //a nice intermediary goal, print some data you can select here
-  // console.log("Now, as an example, a bit of data:")
-  // console.log(site.points[3].snapshots[6].traces[1]);
+
   
   /** 
    *  ##############################################################################################
@@ -117,29 +134,48 @@ try {
    *  ##############################################################################################
    */ 
 
-  //TODO: Work out analysis of the data
-  
-  // for (let point of site.points ) { 
-  //   for(let snapshot of point.snapshots) {
-  //     for(let trace of snapshot.traces) {
-  //       let traceIsRelevant = false;
-  //       for(let parameter of trace.parameters ) {
-  //         if(parameter.title === "Trace Mode" && parameter.value === "Max Hold") {
-  //           traceIsRelevant = true;
-  //           break;
-  //         }
-  //       }
-        
-  //       if(traceIsRelevant) {
-  //         let minAmplitude = trace.records.sort((firstItem, secondItem) => firstItem.amplitude - secondItem.amplitude)[0].amplitude;
-  //         let maxAmplitude = trace.records.sort((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].amplitude;
-  //         console.log("MaxHoldTrace @ trace " + trace.parameters[0].value + " snapshot " + snapshot.ref + " point " + point.ref + " noise floor " + minAmplitude + " dBm, max amplitude: " + maxAmplitude);
-  //       }
-        
+  //define the data fields needed for an export (reduced set) and populate them with the existing data, creaing exportNetworkList
+  /**
+  * @type {ExportNetworkList}
+  */
+  let exportNetworkList = []
 
-  //     }
-  //   }
+  for (let point of site.points ) { 
+    for(let network of point.networks) {
+      /**
+      * @type {ExportNetwork}
+      */
+      let exportNetwork = {
+        ssid : network['SSID'],
+        bssid : network['BSSID'],
+        strength : network['Strength'],
+        channel : network['Center Channel'],
+        width : network['Width (Range)'],
+        atpoint : point.ref,
+      }
+        exportNetworkList.push(exportNetwork);
+    }
+  }
+
+  // console.log("Export Networks, just the 2nd piece:");
+  // console.log(site.points[3].networks);
+
+  //clean up exportNetworkList: For every array of networks with the same ID, return only the one with the strongest signal.
+
+
+  // console.log("Export CSV:");
+  // console.log(objectsToCSV(exportNetworkList));
+
+  // function objectsToCSV(arr) {
+  //   const array = [Object.keys(arr[0])].concat(arr)
+  //   return array.map(row => {
+  //     return Object.values(row).map(value => {
+  //       return typeof value === 'string' ? JSON.stringify(value) : value
+  //     }).toString()
+  //   }).join('\n')
   // }
+
+
   
   //TODO: Export the Analysis in a sensical way
 
