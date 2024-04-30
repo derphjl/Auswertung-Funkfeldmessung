@@ -1,5 +1,6 @@
 import { readdir } from 'node:fs/promises';
 import { readFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 
 const siteReference = "Gebäude X";
 
@@ -123,13 +124,41 @@ for (let point of site.points ) {
   }
 }
 
-//exportNetworkList is now an array of objects with only the selected data points
-
-//TODO: clean up exportNetworkList: For every array of networks with the same ID (SSID or BSSID), return only the one with the strongest signal ot sth.
 
 
-  // console.log("Export CSV:");
-  // console.log(objectsToCSV(exportNetworkList));
+
+let NetworkListHeader = exportNetworkList.shift();
+let reducedByBssidExportNetworkList = [];
+let reducedBySsidExportNetworkList = [];
+let knownBssids = [];
+let knownSsids = [];
+reducedByBssidExportNetworkList = exportNetworkList.filter((longListEntry) => {
+  if (knownBssids.includes(longListEntry.bssid)) {
+    return false; //the bssid is already known, the new network should not be admitted
+  } else {
+    knownBssids.push(longListEntry.bssid);
+    return true; //the bssid is new, the network will be added
+  }
+});
+reducedBySsidExportNetworkList = exportNetworkList.filter((longListEntry) => {
+  if (knownSsids.includes(longListEntry.ssid)) {
+    return false; //the bssid is already known, the new network should not be admitted
+  } else {
+    knownSsids.push(longListEntry.ssid);
+    return true; //the bssid is new, the network will be added
+  }
+});
+exportNetworkList.unshift(NetworkListHeader); //add the header back to the exportNetworkList
+exportNetworkList.unshift(reducedBySsidExportNetworkList); //add the header to the short list, too.
+
+console.log("📋 Working on " + exportNetworkList.length + " input measurements.");
+console.log("⚙️  I found " + reducedByBssidExportNetworkList.length + " unique BSSIDs (Hardware Access Points)");
+console.log("🛜  I found " + reducedBySsidExportNetworkList.length + " unique SSIDs (Networks)\n");
+
+  await writeFile('./results/allWifi.csv', objectsToCSV(reducedBySsidExportNetworkList));
+  console.log("☑️  Export of unique SSID list complete!\n");
+
+  // console.log(objectsToCSV(reducedByBssidExportNetworkList));
 
   function objectsToCSV(arr) {
     const array = [Object.keys(arr[0])].concat(arr)
