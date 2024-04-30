@@ -5,14 +5,6 @@ const siteReference = "Gebäude X";
 
 //## Type definitions. Site -> Point -> Network
 
-// The Network is one Data Point of recieved SSID etc.
-/**
-* @typedef Network
-* @type {{
-* 
-* }}
-*  */
-
 // The Point groups multiple Measurement Exports and represents all the measurement activity on a singular location (or point)
 /**
 * @typedef Point
@@ -33,29 +25,10 @@ const siteReference = "Gebäude X";
 * }}
 */
 
-/**
-* @typedef ExportNetwork
-* @type {{
-  *  ssid: string;
-  *  bssid: string;
-  *  strength: string;
-  *  channel: string;
-  *  width: string;
-  *  atpoint: string;
-  * }}
-  */
-
-/**
-* @typedef ExportNetworkList
-* @type {
-*   exportNetwork[]
-* }
-*/
-
 try {
   
   //### SECTION 0: Initialize the environment ###
-  console.log('📡 Analysis of Radio Field Measurements 🔍');
+  console.log('\n📡 Analysis of Radio Field Measurements 🔍');
   
   /**
   * @type {Site}
@@ -105,27 +78,28 @@ try {
       //### Section 4: The Snapshot is a strange pipe sepperated file. First, split into lines. ###
       let linesOfFile = ((await readFile(`./results/${currentPoint}/${currentSnapshot}`, { encoding: 'utf8' })).trim()).split('\n'); //read the file and split it into lines
       
-      /**
-      * @type {Network}
-      */
-      let network = {};
-      
-      for (let i = 1 ; i < linesOfFile.length ; i++) {
-        for (let j = 0; j < linesOfFile[0].split('|').length ; j++ ) {
-          let key = linesOfFile[0].split('|')[j];
-          let value = linesOfFile[i].split('|')[j];
-          network[key] = value;
-        } //finished iterating the columns at this point, the network is now fully defined
+      //remove the first line of the file, it contains the header data
+      let headerLine = linesOfFile.shift();
+      let headerElement = headerLine.split('|');
+
+      for (let line of linesOfFile) {
+
+        let network = {};
+        let elements = line.split('|');
+
+        for (let i = 0; i < headerElement.length; i++) {
+          network[headerElement[i]] = elements[i];
+        }
+
         point.networks.push(network);
-      } //finished the file at this point, all networks are now in the array.
+      }
+
     }
     site.points.push(point); //push the current measurement point into the array of points in site
-    console.log(snapshots.length ? "✅ Data for Point " + currentPoint + " with " + snapshots.length + " snapshots imported!" : "❌ Data for Point " + currentPoint + " has no snapshots. Nothing imported!");
+    snapshots.length ? '' : console.log("⚠️  Folder for Point " + currentPoint + " cotains no valid snapshots!");
   } // * end of point *
-  console.log("🎉 All points transfered into defined data structure!");   
-  
+  console.log("🎉 All available data transfered into defined data structure!\n");   
 
-  
   /** 
    *  ##############################################################################################
    *  ###                                                                                        ###  
@@ -134,50 +108,37 @@ try {
    *  ##############################################################################################
    */ 
 
-  //define the data fields needed for an export (reduced set) and populate them with the existing data, creaing exportNetworkList
-  /**
-  * @type {ExportNetworkList}
-  */
-  let exportNetworkList = []
-
-  for (let point of site.points ) { 
-    for(let network of point.networks) {
-      /**
-      * @type {ExportNetwork}
-      */
-      let exportNetwork = {
-        ssid : network['SSID'],
-        bssid : network['BSSID'],
-        strength : network['Strength'],
-        channel : network['Center Channel'],
-        width : network['Width (Range)'],
-        atpoint : point.ref,
-      }
-        exportNetworkList.push(exportNetwork);
+let exportNetworkList = [];
+for (let point of site.points ) { 
+  for(let network of point.networks) {
+    let exportNetwork = {
+      ssid : network['SSID'],
+      bssid : network['BSSID'],
+      strength : network['Strength'],
+      channel : network['Center Channel'],
+      width : network['Width (Range)'],
+      atpoint : point.ref,
     }
+    exportNetworkList.push(exportNetwork);
   }
+}
 
-  // console.log("Export Networks, just the 2nd piece:");
-  // console.log(site.points[3].networks);
+//exportNetworkList is now an array of objects with only the selected data points
 
-  //clean up exportNetworkList: For every array of networks with the same ID, return only the one with the strongest signal.
+//TODO: clean up exportNetworkList: For every array of networks with the same ID (SSID or BSSID), return only the one with the strongest signal ot sth.
 
 
   // console.log("Export CSV:");
   // console.log(objectsToCSV(exportNetworkList));
 
-  // function objectsToCSV(arr) {
-  //   const array = [Object.keys(arr[0])].concat(arr)
-  //   return array.map(row => {
-  //     return Object.values(row).map(value => {
-  //       return typeof value === 'string' ? JSON.stringify(value) : value
-  //     }).toString()
-  //   }).join('\n')
-  // }
-
-
-  
-  //TODO: Export the Analysis in a sensical way
+  function objectsToCSV(arr) {
+    const array = [Object.keys(arr[0])].concat(arr)
+    return array.map(row => {
+      return Object.values(row).map(value => {
+        return typeof value === 'string' ? JSON.stringify(value) : value
+      }).toString()
+    }).join('\n')
+  }
 
 } catch (error) {
   console.error('there was an error:', error.message);
