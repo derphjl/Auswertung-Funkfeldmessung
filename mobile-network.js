@@ -22,7 +22,16 @@ const siteReference = "Gebäude X";
   *   unit: string;
   * }}
   */
-  
+
+/**
+* @typedef DetectedSignalRaw
+* @type {{
+  *   title: string;
+  *   value: string;
+  *   unit: string;
+  * }}
+  */
+
 
 // The Trace represents the single Line on the screen of the Analyzer. The properties are read from the first part of the CSV.
 // The Trace will also contain relevant, calculated information such as noise floor average
@@ -31,6 +40,9 @@ const siteReference = "Gebäude X";
 * @type {{
 *   parameters: Parameter[];
 *   records: Record[];
+*   minAmplitude: number;
+*   maxAmplitude: number;
+*   detectedSignalsRaw: DetectedSignalRaw[];
 * }}
 */
 
@@ -65,7 +77,7 @@ const siteReference = "Gebäude X";
 
 try {
   //### SECTION 0: Initialize the environment ###
-  console.log('📡 Analysis of Radio Field Measurements 🔍');
+  console.log('📡 Analysis of Radio Field Measurements - Mobile Network Signals 🔍');
   
   /**
   * @type {Site}
@@ -176,7 +188,7 @@ try {
       point.snapshots.push(snapshot); //push the current snapshot into the array of snapshots in the point
     } // * end of snapshot *
     site.points.push(point); //push the current measurement point into the array of points in site
-    console.log("✅ Data for Point " + currentPoint + " with " + snapshots.length + " snapshots imported!");
+    snapshots.length ? '' : console.log("⚠️  Folder for Point " + currentPoint + " cotains no valid snapshots!");
   } // * end of point *
   console.log("🎉 All points transfered into defined data structure!");   
 
@@ -191,18 +203,9 @@ try {
   for (let point of site.points ) { 
     for(let snapshot of point.snapshots) {
       for(let trace of snapshot.traces) {
-        let traceIsRelevant = false;
-        for(let parameter of trace.parameters ) {
-          if(parameter.title === "Trace Mode" && parameter.value === "Max Hold") {
-            traceIsRelevant = true;
-            break;
-          }
-        }
-        if(traceIsRelevant) {
-          let minAmplitude = trace.records.sort((firstItem, secondItem) => firstItem.amplitude - secondItem.amplitude)[0].amplitude;
-          let maxAmplitude = trace.records.sort((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].amplitude;
-          console.log("MaxHoldTrace @ trace " + trace.parameters[0].value + " snapshot " + snapshot.ref + " point " + point.ref + " noise floor " + minAmplitude + " dBm, max amplitude: " + maxAmplitude);
-        }
+          trace.minAmplitude = trace.records.sort((firstItem, secondItem) => firstItem.amplitude - secondItem.amplitude)[0].amplitude;
+          trace.maxAmplitude = trace.records.sort((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].amplitude;
+          console.log("MaxHoldTrace @ trace " + trace.parameters[0].value + " snapshot " + snapshot.ref + " point " + point.ref + " noise floor " + trace.minAmplitude + " dBm, max amplitude: " + trace.maxAmplitude);
       }
     }
   }
