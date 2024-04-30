@@ -28,7 +28,7 @@ const siteReference = "Gebäude X";
 
 try {
   //### SECTION 0: Initialize the environment ###
-  console.log('\n📡 Analysis of Radio Field Measurements 🔍');
+  console.log('\n📡 Analysis of Radio Field Measurements - WiFi 🔍');
   
   /**
   * @type {Site}
