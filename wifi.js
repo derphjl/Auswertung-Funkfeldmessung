@@ -27,7 +27,6 @@ const siteReference = "Gebäude X";
 */
 
 try {
-  
   //### SECTION 0: Initialize the environment ###
   console.log('\n📡 Analysis of Radio Field Measurements 🔍');
   
@@ -82,30 +81,24 @@ try {
       //remove the first line of the file, it contains the header data
       let headerLine = linesOfFile.shift();
       let headerElement = headerLine.split('|');
-
       for (let line of linesOfFile) {
-
         let network = {};
         let elements = line.split('|');
-
         for (let i = 0; i < headerElement.length; i++) {
           network[headerElement[i]] = elements[i];
         }
-
         point.networks.push(network);
       }
-
     }
     site.points.push(point); //push the current measurement point into the array of points in site
+
     snapshots.length ? '' : console.log("⚠️  Folder for Point " + currentPoint + " cotains no valid snapshots!");
   } // * end of point *
   console.log("🎉 All available data transfered into defined data structure!\n");   
 
   /** 
    *  ##############################################################################################
-   *  ###                                                                                        ###  
    *  ### IMPORT OF EXISTING DATA IS NOW DONE. FROM HERE ON, IT'S ANALYSIS AND MODIFICATION TIME ###
-   *  ###                                                                                        ###
    *  ##############################################################################################
    */ 
 
@@ -124,9 +117,7 @@ for (let point of site.points ) {
   }
 }
 
-
-
-
+//TODO: reduce this repetition thing down to one function.
 let NetworkListHeader = exportNetworkList.shift();
 let reducedByBssidExportNetworkList = [];
 let reducedBySsidExportNetworkList = [];
@@ -157,8 +148,6 @@ console.log("🛜  I found " + reducedBySsidExportNetworkList.length + " unique 
 
   await writeFile('./results/allWifi.csv', objectsToCSV(reducedBySsidExportNetworkList));
   console.log("☑️  Export of unique SSID list complete!\n");
-
-  // console.log(objectsToCSV(reducedByBssidExportNetworkList));
 
   function objectsToCSV(arr) {
     const array = [Object.keys(arr[0])].concat(arr)
