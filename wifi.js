@@ -118,7 +118,7 @@ for (let point of site.points ) {
 }
 
 //TODO: reduce this repetition thing down to one function.
-let NetworkListHeader = exportNetworkList.shift();
+let networkListHeader = exportNetworkList.shift();
 let reducedByBssidExportNetworkList = [];
 let reducedBySsidExportNetworkList = [];
 let knownBssids = [];
@@ -139,7 +139,7 @@ reducedBySsidExportNetworkList = exportNetworkList.filter((longListEntry) => {
     return true; //the bssid is new, the network will be added
   }
 });
-exportNetworkList.unshift(NetworkListHeader); //add the header back to the exportNetworkList
+exportNetworkList.unshift(networkListHeader); //add the header back to the exportNetworkList
 exportNetworkList.unshift(reducedBySsidExportNetworkList); //add the header to the short list, too.
 
 console.log("📋 Working on " + exportNetworkList.length + " input measurements.");
