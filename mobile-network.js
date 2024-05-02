@@ -195,50 +195,91 @@ function getMinMaxAmplitudes(trace) {
 // a GSM Signal has a Bandwith of 200kHz. Neighbouring Signals may be cut off here, TODO Fix
 function identifyAllGSMSignals(trace) {
   
-  //for a start, we will evaluate the maxAmplitude, it might be the center frequency of our GSM signal
-  
-  //fetch the frequency of the maxamplitude
+  trace.maxAmplitude ? getMinMaxAmplitudes(trace) : '' ; //see if the getMinMaxAmplitudes has been called alreade. If not, call it.
+  let workingTrace = trace; //we will be mutating this trace later, so we'll create a working copy in the scope of the analysis.
   let workingFrequency = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].frequency;
-  let workingAmplitude = trace.maxAmplitude;
+  let workingAmplitude = trace.maxAmplitude;  //for the first iteration, the max amplitude from the getMinMaxAmplitudes function is used.
   let workingIndex = trace.records.findIndex((element) => element.frequency === workingFrequency);
-  
-  //if we don't "have enough space", meaning that the max amplitude is too close to the bedginning or end of the data, there are fallbacks required. With the spectrum rider, there are always 710 data points.
-  //TODO: In that case, dont just give up, maxbe find the max value in a workable context? maybe dial down the analysis or make it one-sided? idk.
-  if (workingIndex < 3 || workingIndex > 707) return;
-  
-  let addition = 0; //Average out the working position with the ones around it (one left, one right). This makes sure the measurement is not a fluke. The average should be smaller, but not too small
-  for (let i = -1 ; i < 2 ; i++){
-    addition += Number(trace.records[workingIndex + i].amplitude);
+  let signalWidth = 500000; //with RBW = 300kHz setting the signal width smaller does not make any sense. TODO: find a value that works well.
+  let workingSpan;
+  let amplitudeIsNoticableThreshold = 0.6; //this ratio has to be statisfied for the detection to contunue (0.1 = only comically strong signals will be detected, 0.99 = every teeny blip will be detected)
+  let signalIsNotFlukeValue = 0.95; //when a peak is being detected, we take it and the values around it and average it out. This average must be withing i.e. 95% of the peak value to not be a fluke (0.999 = almost everything will count as a fluke, 0.1 = this calculation might as well not exist and would only disqualify values that have a physically impobbible drop in amplitude from one record to the next.)
+
+  for(let parameter of workingTrace.parameters ) {
+    if(parameter.title === "Span") { //iteratre through the parameters of the trace and pick the span parameter
+      workingSpan = parameter.value;
+      break;  //once the working span has been found, we can break out of the parameter iteration.
+    }
   }
-  let averageAroundIndex = addition / 3;
-  if ((trace.records[workingIndex].amplitude / averageAroundIndex) > .95){
-    console.log(":)")
-  } else {
-    console.log("💥 Not plausible: The amplitude at frequency " + Math.trunc(workingFrequency/1000)/1000 + " MHz violates the ratio test.");
-  }
+
+  //check how many records we need to delete to hold the whole signal    
+  let stepSize = workingSpan / workingTrace.records.length;
+  let stepAmmount = Math.ceil(( signalWidth / 2 ) / stepSize);
   
+  while (workingAmplitude > Number(trace.minAmplitude) * amplitudeIsNoticableThreshold) {    
+    //if we don't "have enough space", meaning that the max amplitude is too close to the beginning or end of the data, there are fallbacks required. With the spectrum rider, there are always 710 data points.
+    //TODO: In that case, dont just give up, maxbe find the max value in a workable context? maybe dial down the analysis or make it one-sided? idk.
+    if (workingIndex > 3 || workingIndex < 707){
+      let addition = 0; //Average out the working position with the ones around it (one left, one right). This makes sure the measurement is not a fluke. The average should be smaller, but not too small
+      for (let i = -1 ; i < 2 ; i++){
+        addition += Number(workingTrace.records[workingIndex + i].amplitude);
+      }
+      let averageAroundIndex = addition / 3;
+
+      if ((workingTrace.records[workingIndex].amplitude / averageAroundIndex) > signalIsNotFlukeValue){
+
+          let sepperationValueBelow = workingTrace.records[workingIndex].amplitude / workingTrace.records[workingIndex - stepAmmount].amplitude;
+          let sepperationValueAbove = workingTrace.records[workingIndex].amplitude / workingTrace.records[workingIndex + stepAmmount].amplitude;
+
+          if ((sepperationValueAbove < 0.9) && (sepperationValueBelow) < 0.9) {
+            console.log("Sepperation is good! A valid GSM signal seems to be at " + workingTrace.records[workingIndex].frequency);
+
+          }
+      } else {
+        // console.log("💥 Not plausible: The amplitude at frequency " + Math.trunc(workingFrequency/1000)/1000 + " MHz violates the ratio test.");
+      }
+    } else {
+      //console.log("💥 Problematic! The max-point is too close to the edge. Ignoring for now.")
+    };
+
+    //cleanup: remove the peak some signal around it. this enables us to find the next candidate for max amplitude detection    
+    for (let i = -stepAmmount ; i <= stepAmmount ; i++ ) {
+      if (workingTrace.records[workingIndex + i]) { workingTrace.records[workingIndex + i].amplitude = workingTrace.minAmplitude };  //reduce the signal down to the noise floor
+    }
+
+    //fetch the new value for max amplitude, print.
+    workingFrequency = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].frequency;
+    workingAmplitude = workingTrace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].amplitude;
+    workingIndex = trace.records.findIndex((element) => element.frequency === workingFrequency);
+
+  } //end of while. if we pass this point, there is no longer adequate sepperation to identify any signal. the evaluation for this trace is not complete. 
 }
 
 for (let point of site.points) { 
   for(let snapshot of point.snapshots) {
     for(let trace of snapshot.traces) {
+      let isMaxHold = false;
+      let isBelow2 = false;
       for(let parameter of trace.parameters ) {
+        
         if(parameter.title === "Trace Mode" && parameter.value === "Max Hold") {
+          isMaxHold = true;   //Clear Write Traces are much too unstable to be analyzed and should be disregarded
+        }
+
+        if(parameter.title === "Center Frequency" && parameter.value < 2000000000 ) {
+          isBelow2 = true;    //GSM can only occur in the 800/900 and the 1800 Band, anything beyong 2GHz is off limits and can be disregarded
+        }
+
+        if(isMaxHold && isBelow2) {
           //A relevant trace has been identified and will be passed on to the evaluator functions
           getMinMaxAmplitudes(trace);
           identifyAllGSMSignals(trace);
           break;
-        }
+        }        
       }
     }  
   }
 }
-
-
-
-
-// console.log("Sample Output: " + site.points[9].snapshots[0].ref);
-// console.log(site.points[9].snapshots[0].traces[1]);
 
 } catch (error) {
   console.error('there was an error:', error.message);
