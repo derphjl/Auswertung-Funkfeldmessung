@@ -23,16 +23,6 @@ const siteReference = "Gebäude X";
   * }}
   */
 
-/**
-* @typedef DetectedSignalRaw
-* @type {{
-  *   title: string;
-  *   value: string;
-  *   unit: string;
-  * }}
-  */
-
-
 // The Trace represents the single Line on the screen of the Analyzer. The properties are read from the first part of the CSV.
 // The Trace will also contain relevant, calculated information such as noise floor average
 /**
@@ -42,7 +32,6 @@ const siteReference = "Gebäude X";
 *   records: Record[];
 *   minAmplitude: number;
 *   maxAmplitude: number;
-*   detectedSignalsRaw: DetectedSignalRaw[];
 * }}
 */
 
@@ -156,68 +145,100 @@ try {
           records : [],
         }
         //splitIndex is the line before the line containg the keyword "Frequency [Hz]" and marks the vertical split between the parameters-part and the records-part of the trace
-        let splitIndex = linesOfFile.findIndex((singleLine) => singleLine.match(new RegExp(/.*Frequency \[Hz].*/))) - 1; //first we find out where the key "Frequency [Hz] is. This splits Head and Data.
-        
-        //only working within the parameters-portion of the trace: the key is in the first column, the value in the second and the unit in the third. Wer are producing key-value-pairs, so the unit gets smashed onto the value if applicable.
-        for (let lineOfFile of linesOfFile.slice(0,splitIndex)) {
-          let elementsOfLine = lineOfFile.split(`,`);
-          /**
-          * @type {Parameter}
-          */
-          let parameter = {
-            title : elementsOfLine[dataIndex],
-            value : elementsOfLine[dataIndex + 1],
-            unit : elementsOfLine[dataIndex + 2],
-          };
-          trace.parameters.push(parameter);
-        }
-        
-        for (let lineOfFile of linesOfFile.slice(splitIndex + 2)) {
-          let elementsOfLine = lineOfFile.split(`,`);
-          /**
-          * @type {Record}
-          */
-          let record = {
-            frequency : elementsOfLine[dataIndex],
-            amplitude : elementsOfLine[dataIndex + 1],
-          };
-          trace.records.push(record);
-        }
-        snapshot.traces.push(trace);  //push the current trace into the array of traces in the point
-      } // * end of trace * 
-      point.snapshots.push(snapshot); //push the current snapshot into the array of snapshots in the point
-    } // * end of snapshot *
-    site.points.push(point); //push the current measurement point into the array of points in site
-    snapshots.length ? '' : console.log("⚠️  Folder for Point " + currentPoint + " cotains no valid snapshots!");
-  } // * end of point *
-  console.log("🎉 All points transfered into defined data structure!");   
-
-  /** 
-   *  ##############################################################################################  
-   *  ### IMPORT OF EXISTING DATA IS NOW DONE. FROM HERE ON, IT'S ANALYSIS AND MODIFICATION TIME ###
-   *  ##############################################################################################
-   */ 
-
-  //TODO: Work out analysis of the data
-  
-  for (let point of site.points ) { 
-    for(let snapshot of point.snapshots) {
-      for(let trace of snapshot.traces) {
-          trace.minAmplitude = trace.records.sort((firstItem, secondItem) => firstItem.amplitude - secondItem.amplitude)[0].amplitude;
-          trace.maxAmplitude = trace.records.sort((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].amplitude;
-          console.log("MaxHoldTrace @ trace " + trace.parameters[0].value + " snapshot " + snapshot.ref + " point " + point.ref + " noise floor " + trace.minAmplitude + " dBm, max amplitude: " + trace.maxAmplitude);
+      let splitIndex = linesOfFile.findIndex((singleLine) => singleLine.match(new RegExp(/.*Frequency \[Hz].*/))) - 1; //first we find out where the key "Frequency [Hz] is. This splits Head and Data.
+      
+      //only working within the parameters-portion of the trace: the key is in the first column, the value in the second and the unit in the third. Wer are producing key-value-pairs, so the unit gets smashed onto the value if applicable.
+      for (let lineOfFile of linesOfFile.slice(0,splitIndex)) {
+        let elementsOfLine = lineOfFile.split(`,`);
+        /**
+        * @type {Parameter}
+        */
+        let parameter = {
+          title : elementsOfLine[dataIndex],
+          value : elementsOfLine[dataIndex + 1],
+          unit : elementsOfLine[dataIndex + 2],
+        };
+        trace.parameters.push(parameter);
       }
-    }
-  }
+      
+      for (let lineOfFile of linesOfFile.slice(splitIndex + 2)) {
+        let elementsOfLine = lineOfFile.split(`,`);
+        /**
+        * @type {Record}
+        */
+        let record = {
+          frequency : elementsOfLine[dataIndex],
+          amplitude : elementsOfLine[dataIndex + 1],
+        };
+        trace.records.push(record);
+      }
+      snapshot.traces.push(trace);  //push the current trace into the array of traces in the point
+    } // * end of trace * 
+    point.snapshots.push(snapshot); //push the current snapshot into the array of snapshots in the point
+  } // * end of snapshot *
+  site.points.push(point); //push the current measurement point into the array of points in site
+  snapshots.length ? '' : console.log("⚠️  Folder for Point " + currentPoint + " cotains no valid snapshots!");
+} // * end of point *
+console.log("🎉 All points transfered into defined data structure!");   
 
+/** 
+*  ##############################################################################################  
+*  ### IMPORT OF EXISTING DATA IS NOW DONE. FROM HERE ON, IT'S ANALYSIS AND MODIFICATION TIME ###
+*  ##############################################################################################
+*/ 
 
+function getMinMaxAmplitudes(trace) {
+  trace.minAmplitude = trace.records.toSorted((firstItem, secondItem) => firstItem.amplitude - secondItem.amplitude)[0].amplitude;
+  trace.maxAmplitude = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].amplitude;
+}
 
-
-
-
-
+// a GSM Signal has a Bandwith of 200kHz. Neighbouring Signals may be cut off here, TODO Fix
+function identifyAllGSMSignals(trace) {
   
-  //TODO: Export the Analysis in a sensical way
+  //for a start, we will evaluate the maxAmplitude, it might be the center frequency of our GSM signal
+  
+  //fetch the frequency of the maxamplitude
+  let workingFrequency = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].frequency;
+  let workingAmplitude = trace.maxAmplitude;
+  let workingIndex = trace.records.findIndex((element) => element.frequency === workingFrequency);
+  
+  //if we don't "have enough space", meaning that the max amplitude is too close to the bedginning or end of the data, there are fallbacks required. With the spectrum rider, there are always 710 data points.
+  //TODO: In that case, dont just give up, maxbe find the max value in a workable context? maybe dial down the analysis or make it one-sided? idk.
+  if (workingIndex < 3 || workingIndex > 707) return;
+  
+  let addition = 0; //Average out the working position with the ones around it (one left, one right). This makes sure the measurement is not a fluke. The average should be smaller, but not too small
+  for (let i = -1 ; i < 2 ; i++){
+    addition += Number(trace.records[workingIndex + i].amplitude);
+  }
+  let averageAroundIndex = addition / 3;
+  if ((trace.records[workingIndex].amplitude / averageAroundIndex) > .95){
+    console.log(":)")
+  } else {
+    console.log("💥 Not plausible: The amplitude at frequency " + Math.trunc(workingFrequency/1000)/1000 + " MHz violates the ratio test.");
+  }
+  
+}
+
+for (let point of site.points) { 
+  for(let snapshot of point.snapshots) {
+    for(let trace of snapshot.traces) {
+      for(let parameter of trace.parameters ) {
+        if(parameter.title === "Trace Mode" && parameter.value === "Max Hold") {
+          //A relevant trace has been identified and will be passed on to the evaluator functions
+          getMinMaxAmplitudes(trace);
+          identifyAllGSMSignals(trace);
+          break;
+        }
+      }
+    }  
+  }
+}
+
+
+
+
+// console.log("Sample Output: " + site.points[9].snapshots[0].ref);
+// console.log(site.points[9].snapshots[0].traces[1]);
 
 } catch (error) {
   console.error('there was an error:', error.message);
