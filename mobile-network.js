@@ -64,18 +64,10 @@ const siteReference = "Gebäude X";
 * }}
 */
 
-const frequenciesLte20 = ['1462', '1482', '1815', '1845', '1865', '', '', '', '', '', '', '', '', '', '', ];
-const frequenciesLte10 = [];
-const frequenciesLte5 = [];
-
-
-
-
-
-
-
-
-
+//TODO: check these, make sure only BTM (downstream) frequencies are listed.
+const frequenciesLte20 = ['1462', '1482', '1815', '1845', '1865', '1930', '1950', '1970', '2120', '2140', '2160', '2510', '2530', '2550', '2570', '2590', '2630', '2650', '2670'];
+const frequenciesLte10 = ['796', '806', '816', '930', '940', '950', '1830'];
+const frequenciesLte5 = ['1782.5', '1875.5'];
 
 try {
   //### SECTION 0: Initialize the environment ###
