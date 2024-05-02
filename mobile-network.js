@@ -64,6 +64,19 @@ const siteReference = "Gebäude X";
 * }}
 */
 
+const frequenciesLte20 = ['1462', '1482', '1815', '1845', '1865', '', '', '', '', '', '', '', '', '', '', ];
+const frequenciesLte10 = [];
+const frequenciesLte5 = [];
+
+
+
+
+
+
+
+
+
+
 try {
   //### SECTION 0: Initialize the environment ###
   console.log('📡 Analysis of Radio Field Measurements - Mobile Network Signals 🔍');
@@ -192,6 +205,12 @@ function getMinMaxAmplitudes(trace) {
   trace.maxAmplitude = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].amplitude;
 }
 
+function identifyAllLteSignals(trace, relevantFrequencies) {
+
+//detect and eliminate the LTE signals
+
+}
+
 // a GSM Signal has a Bandwith of 200kHz. Neighbouring Signals may be cut off here, TODO Fix
 function identifyAllGSMSignals(trace) {
   
@@ -200,9 +219,10 @@ function identifyAllGSMSignals(trace) {
   let workingFrequency = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].frequency;
   let workingAmplitude = trace.maxAmplitude;  //for the first iteration, the max amplitude from the getMinMaxAmplitudes function is used.
   let workingIndex = trace.records.findIndex((element) => element.frequency === workingFrequency);
-  let signalWidth = 500000; //with RBW = 300kHz setting the signal width smaller does not make any sense. TODO: find a value that works well.
+  let signalWidth = 400000; //with RBW = 300kHz setting the signal width smaller does not make any sense. TODO: find a value that works well.
+  let trueSignalWidth = 200000;
   let workingSpan;
-  let amplitudeIsNoticableThreshold = 0.6; //this ratio has to be statisfied for the detection to contunue (0.1 = only comically strong signals will be detected, 0.99 = every teeny blip will be detected)
+  let amplitudeIsNoticableThreshold = 0.9; //this ratio has to be statisfied for the detection to contunue (0.1 = only comically strong signals will be detected, 0.99 = every teeny blip will be detected)
   let signalIsNotFlukeValue = 0.95; //when a peak is being detected, we take it and the values around it and average it out. This average must be withing i.e. 95% of the peak value to not be a fluke (0.999 = almost everything will count as a fluke, 0.1 = this calculation might as well not exist and would only disqualify values that have a physically impobbible drop in amplitude from one record to the next.)
 
   for(let parameter of workingTrace.parameters ) {
@@ -219,7 +239,7 @@ function identifyAllGSMSignals(trace) {
   while (workingAmplitude > Number(trace.minAmplitude) * amplitudeIsNoticableThreshold) {    
     //if we don't "have enough space", meaning that the max amplitude is too close to the beginning or end of the data, there are fallbacks required. With the spectrum rider, there are always 710 data points.
     //TODO: In that case, dont just give up, maxbe find the max value in a workable context? maybe dial down the analysis or make it one-sided? idk.
-    if (workingIndex > 3 || workingIndex < 707){
+    if (workingIndex > 5 || workingIndex < 705){
       let addition = 0; //Average out the working position with the ones around it (one left, one right). This makes sure the measurement is not a fluke. The average should be smaller, but not too small
       for (let i = -1 ; i < 2 ; i++){
         addition += Number(workingTrace.records[workingIndex + i].amplitude);
@@ -232,7 +252,9 @@ function identifyAllGSMSignals(trace) {
           let sepperationValueAbove = workingTrace.records[workingIndex].amplitude / workingTrace.records[workingIndex + stepAmmount].amplitude;
 
           if ((sepperationValueAbove < 0.9) && (sepperationValueBelow) < 0.9) {
-            console.log("Sepperation is good! A valid GSM signal seems to be at " + workingTrace.records[workingIndex].frequency);
+            let candidateFrequency = workingTrace.records[workingIndex].frequency;
+            let candidateFrequencyOnChannel = ((Math.round(candidateFrequency / trueSignalWidth) * trueSignalWidth)) ;
+            console.log("Sepperation is good! A valid GSM signal seems to be at " + candidateFrequencyOnChannel);
 
           }
       } else {
@@ -256,6 +278,7 @@ function identifyAllGSMSignals(trace) {
 }
 
 for (let point of site.points) { 
+  console.log("\n Now at Point " + point.ref);
   for(let snapshot of point.snapshots) {
     for(let trace of snapshot.traces) {
       let isMaxHold = false;
@@ -272,8 +295,13 @@ for (let point of site.points) {
 
         if(isMaxHold && isBelow2) {
           //A relevant trace has been identified and will be passed on to the evaluator functions
+          console.log("Go for " + snapshot.ref);
+          identifyAllLteSignals(trace, frequenciesLte20);
+          identifyAllLteSignals(trace, frequenciesLte10);
+          identifyAllLteSignals(trace, frequenciesLte5);
           getMinMaxAmplitudes(trace);
           identifyAllGSMSignals(trace);
+          
           break;
         }        
       }
