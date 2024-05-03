@@ -228,19 +228,8 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
     if (!(((referenceFrequency * 1000000) < trace.records[0].frequency) || ((referenceFrequency * 1000000) > trace.records[trace.records.length - 1].frequency)) ) {
       //find the index position that matches the center frequency closest
       
-      //from the array of record objects, extract a list of just the frequencies and put it into the array "tempFrequencyArray"
-      let tempFrequencyArray = Array.from(trace.records, (entry) => entry.frequency);
-      
-      // console.log("Before sort for " + referenceFrequency + ":");
-      // console.log(tempFrequencyArray);
-      
-      
-      tempFrequencyArray.sort((a, b) => {
-        //check if a or be is closer to referenceFrequency. If a is closer, return positive value. if b is closer, reutn negative value
-      });
-      
-      // console.log("After sort for " + referenceFrequency + ":");
-      // console.log(tempFrequencyArray);
+      let indexOfClosestFrequency = trace.records.findIndex((entry) => Math.abs(entry.frequency - (referenceFrequency * 1000000)) < stepSize);
+      console.log("For reference " + referenceFrequency +  " index of closest frequency: " + indexOfClosestFrequency + " with frequency " + trace.records[indexOfClosestFrequency].frequency);
       
       
       //find out how many steps we need to fetch for the signal, then only evaluate the center 80%
