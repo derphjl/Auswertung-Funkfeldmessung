@@ -66,16 +66,16 @@ const siteReference = "Gebäude X";
 
 //TODO: check these, make sure only BTM (downstream) frequencies are listed.
 const frequenciesLte20 = {
-  bandwidth: '20',
-  frequencies: ['1462', '1482', '1815', '1845', '1865', '2120', '2140', '2160', '2630', '2650', '2670'],
+  bandwidth: 20,
+  frequencies: [1462, 1482, 1815, 1845, 1865, 2120, 2140, 2160, 2630, 2650, 2670],
 };
 const frequenciesLte10 = {
-  bandwidth: '10',
-  frequencies: ['796', '806', '816', '930', '940', '950', '1830', '2685'],
+  bandwidth: 10,
+  frequencies: [796, 806, 816, 930, 940, 950, 1830, 2685],
 };
 const frequenciesLte5 = {
-  bandwidth: '5',
-  frequencies: ['957.5', '1875.5'],
+  bandwidth: 5,
+  frequencies: [957.5, 1875.5],
 };
 
 try {
@@ -208,10 +208,12 @@ function getMinMaxAmplitudes(trace) {
 
 function identifyAllLteSignals(trace, referenceLteFrequencies) {
   
-  trace.maxAmplitude ? getMinMaxAmplitudes(trace) : '' ; //see if the getMinMaxAmplitudes has been called alreade. If not, call it.
+  let focusFactor = 0.9 //an LTE Signal is not uniform but more of a bell curve with a flat middle. For that reason, for amplidtude evaluation we will only look at i.e. 0.9 = 90% of each side of the signal, so the center 80%
+
   let noisefloor = trace.minAmplitude;
   let bandwidth = referenceLteFrequencies.bandwidth;
   let workingSpan;
+  
   
   for(let parameter of trace.parameters ) {
     if(parameter.title === "Span") { //iteratre through the parameters of the trace and pick the span parameter
@@ -234,11 +236,43 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
       
       //find out how many steps we need to fetch for the signal, then only evaluate the center 80%
       let bandwidthInSteps =  ((bandwidth * 1000000) / stepSize); //bandwidth is in MHz and stepSize is in Hz
-      let startIterate = Math.floor((( Math.floor( bandwidthInSteps / 2 ) ) * -1 ) * 0.9);
-      let stopIterate = Math.floor(( Math.floor( bandwidthInSteps / 2 ) ) * 0.9);
-      for ( let i = startIterate ; i <= stopIterate ; i++ ) {
+      let startIterate = Math.floor((( Math.floor( bandwidthInSteps / 2 ) ) * -1 ) * focusFactor);
+      let stopIterate = Math.floor(( Math.floor( bandwidthInSteps / 2 ) ) * focusFactor);
+      console.log("Signal is " + bandwidth + " wide. That is " + bandwidthInSteps + " steps.");
+      
+      
+      //first check: iterate though the signal and average out the amplitude value
+      let sumArray = [];
+      let sumValue = 0;
+      for ( let i = indexOfClosestFrequency + startIterate ; i <= indexOfClosestFrequency + stopIterate + 1 ; i++ ) {
+        sumArray.push(trace.records[i].amplitude);
+        sumValue += Number(trace.records[i].amplitude);
+      }
+      let averageAmplitudeCurrentSignal = sumValue / sumArray.length; //TODO: There has to be a better way to do this. sumArray is only used as a vessel for length, not ideal!
+      let separationToNoiseFloor = Number(averageAmplitudeCurrentSignal) - Number(noisefloor);
+      console.log("Average amplidtude of current signal calculated as:" + averageAmplitudeCurrentSignal);
+      console.log("If the signal is truthful, this signal is " + separationToNoiseFloor + " dB higher than the noise floor");
+
+      //TODO: Evaluate if a second check is needed to differanciate setups like 10 + 10 from 20. Maybe not relevant?
+
+      //second check: with the sepperation, see if every data point has at least 50% of the average sepperation 
+      for ( let i = indexOfClosestFrequency + startIterate ; i <= indexOfClosestFrequency + stopIterate + 1 ; i++ ) {
+        console.log("\na " + trace.records[i].amplitude);
+        console.log("n " + noisefloor);
+        console.log("s " + separationToNoiseFloor);
+        console.log("0.8s " + separationToNoiseFloor * 0.8);
+        if (trace.records[i].amplitude < noisefloor - (0.8 * separationToNoiseFloor)) {
+
+
+          console.log("looks fine!");
+        } else {
+          //console.log("something going on here");
+        };
         
       }
+
+
+
     } else { 
       //console.log("With reference " + referenceFrequency + " and Trace starting at " + trace.records[0].frequency / 1000000 + " and ending at " + trace.records[trace.records.length - 1].frequency / 1000000 + " skipped trace due to implausibility") 
     };
@@ -248,7 +282,6 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
 // a GSM Signal has a Bandwith of 200kHz. Neighbouring Signals may be cut off here, TODO Fix
 function identifyAllGSMSignals(trace) {
   
-  trace.maxAmplitude ? getMinMaxAmplitudes(trace) : '' ; //see if the getMinMaxAmplitudes has been called alreade. If not, call it.
   let workingTrace = trace; //we will be mutating this trace later, so we'll create a working copy in the scope of the analysis.
   let workingFrequency = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].frequency;
   let workingAmplitude = trace.maxAmplitude;  //for the first iteration, the max amplitude from the getMinMaxAmplitudes function is used.
@@ -330,6 +363,7 @@ for (let point of site.points) {
         if(isMaxHold && isBelow2) {
           //A relevant trace has been identified and will be passed on to the evaluator functions
           console.log("Go for " + snapshot.ref);
+          getMinMaxAmplitudes(trace);
           identifyAllLteSignals(trace, frequenciesLte20);
           // identifyAllLteSignals(trace, frequenciesLte10);
           // identifyAllLteSignals(trace, frequenciesLte5);
