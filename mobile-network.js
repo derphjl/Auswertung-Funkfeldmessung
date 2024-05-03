@@ -65,9 +65,18 @@ const siteReference = "Gebäude X";
 */
 
 //TODO: check these, make sure only BTM (downstream) frequencies are listed.
-const frequenciesLte20 = ['1462', '1482', '1815', '1845', '1865', '1930', '1950', '1970', '2120', '2140', '2160', '2510', '2530', '2550', '2570', '2590', '2630', '2650', '2670'];
-const frequenciesLte10 = ['796', '806', '816', '930', '940', '950', '1830'];
-const frequenciesLte5 = ['1782.5', '1875.5'];
+const frequenciesLte20 = {
+  bandwidth: '20',
+  frequencies: ['1462', '1482', '1815', '1845', '1865', '2120', '2140', '2160', '2630', '2650', '2670'],
+};
+const frequenciesLte10 = {
+  bandwidth: '10',
+  frequencies: ['796', '806', '816', '930', '940', '950', '1830', '2685'],
+};
+const frequenciesLte5 = {
+  bandwidth: '5',
+  frequencies: ['957.5', '1875.5'],
+};
 
 try {
   //### SECTION 0: Initialize the environment ###
@@ -197,10 +206,54 @@ function getMinMaxAmplitudes(trace) {
   trace.maxAmplitude = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].amplitude;
 }
 
-function identifyAllLteSignals(trace, relevantFrequencies) {
-
-//detect and eliminate the LTE signals
-
+function identifyAllLteSignals(trace, referenceLteFrequencies) {
+  
+  trace.maxAmplitude ? getMinMaxAmplitudes(trace) : '' ; //see if the getMinMaxAmplitudes has been called alreade. If not, call it.
+  let noisefloor = trace.minAmplitude;
+  let bandwidth = referenceLteFrequencies.bandwidth;
+  let workingSpan;
+  
+  for(let parameter of trace.parameters ) {
+    if(parameter.title === "Span") { //iteratre through the parameters of the trace and pick the span parameter
+      workingSpan = parameter.value;
+      break;  //once the working span has been found, we can break out of the parameter iteration.
+    }
+  }
+  
+  let stepSize = workingSpan / trace.records.length;
+  
+  
+  
+  for (let referenceFrequency of referenceLteFrequencies.frequencies) {
+    if (!(((referenceFrequency * 1000000) < trace.records[0].frequency) || ((referenceFrequency * 1000000) > trace.records[trace.records.length - 1].frequency)) ) {
+      //find the index position that matches the center frequency closest
+      
+      //from the array of record objects, extract a list of just the frequencies and put it into the array "tempFrequencyArray"
+      let tempFrequencyArray = Array.from(trace.records, (entry) => entry.frequency);
+      
+      // console.log("Before sort for " + referenceFrequency + ":");
+      // console.log(tempFrequencyArray);
+      
+      
+      tempFrequencyArray.sort((a, b) => {
+        //check if a or be is closer to referenceFrequency. If a is closer, return positive value. if b is closer, reutn negative value
+      });
+      
+      // console.log("After sort for " + referenceFrequency + ":");
+      // console.log(tempFrequencyArray);
+      
+      
+      //find out how many steps we need to fetch for the signal, then only evaluate the center 80%
+      let bandwidthInSteps =  ((bandwidth * 1000000) / stepSize); //bandwidth is in MHz and stepSize is in Hz
+      let startIterate = Math.floor((( Math.floor( bandwidthInSteps / 2 ) ) * -1 ) * 0.9);
+      let stopIterate = Math.floor(( Math.floor( bandwidthInSteps / 2 ) ) * 0.9);
+      for ( let i = startIterate ; i <= stopIterate ; i++ ) {
+        
+      }
+    } else { 
+      //console.log("With reference " + referenceFrequency + " and Trace starting at " + trace.records[0].frequency / 1000000 + " and ending at " + trace.records[trace.records.length - 1].frequency / 1000000 + " skipped trace due to implausibility") 
+    };
+  } 
 }
 
 // a GSM Signal has a Bandwith of 200kHz. Neighbouring Signals may be cut off here, TODO Fix
@@ -289,10 +342,9 @@ for (let point of site.points) {
           //A relevant trace has been identified and will be passed on to the evaluator functions
           console.log("Go for " + snapshot.ref);
           identifyAllLteSignals(trace, frequenciesLte20);
-          identifyAllLteSignals(trace, frequenciesLte10);
-          identifyAllLteSignals(trace, frequenciesLte5);
-          getMinMaxAmplitudes(trace);
-          identifyAllGSMSignals(trace);
+          // identifyAllLteSignals(trace, frequenciesLte10);
+          // identifyAllLteSignals(trace, frequenciesLte5);
+          //identifyAllGSMSignals(trace);
           
           break;
         }        
