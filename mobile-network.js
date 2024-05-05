@@ -121,7 +121,7 @@ try {
     }
     
     const directoryEntries = await readdir(`./results/${currentPoint}`);
-    const snapshots = directoryEntries.filter((entry) => entry.match(new RegExp(/^\w{3}\d{4}.csv$/)));
+    const snapshots = directoryEntries.filter((entry) => entry.match(/^\w{3}\d{4}.csv$/));
     
     //### Section 3: Within a Point, all files that match the above regex qualify as a snapshort. Iterate through the snaphots. ###
     for (let currentSnapshot of snapshots) {
@@ -139,7 +139,7 @@ try {
       
       //### Section 5: To fetch the ammount and position of Traces, seach for the Keyword "Sweep" and save the correct positions ###
       //TODO: The more elegant solution would maybe be to check the split aray of elements in a line and check for a pattern of DATA - DATA - EMPTY, returning the position of the first DATA? However, this will work for now!
-      const occurencesOfSweep = linesOfFile[0].split(`,`).filter((entry) => entry.match(new RegExp(/Sweep/)));
+      const occurencesOfSweep = linesOfFile[0].split(`,`).filter((entry) => entry.match(/Sweep/));
       //occurencesOfSweep is now an array of string containing all occurences of the word "Sweep" (literally as a string containing "Sweep" at this point) in the first line of the file
       let dataIndices = []
       for (let occurenceOfSweep of occurencesOfSweep){  //for any occurence of the word "sweep", get the index position in the line, subtract one, and push it into the aray "dataIndicies"
