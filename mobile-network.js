@@ -172,7 +172,6 @@ try {
           value : elementsOfLine[dataIndex + 1],
           unit : elementsOfLine[dataIndex + 2],
         };
-        
         trace.parameters.push(parameter);
       }
       
