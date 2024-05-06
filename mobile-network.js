@@ -158,6 +158,7 @@ try {
         const trace = {
           parameters : [],
           records : [],
+          detectedSignals: [],
         }
         //splitIndex is the line before the line containg the keyword "Frequency [Hz]" and marks the vertical split between the parameters-part and the records-part of the trace
       let splitIndex = linesOfFile.findIndex((singleLine) => singleLine.match(new RegExp(/.*Frequency \[Hz].*/))) - 1; //first we find out where the key "Frequency [Hz] is. This splits Head and Data.
@@ -208,13 +209,10 @@ function getMinMaxAmplitudes(trace) {
 }
 
 function identifyAllLteSignals(trace, referenceLteFrequencies) {
-  
   const focusFactor = 0.9 //an LTE Signal is not uniform but more of a bell curve with a flat middle. For that reason, for amplidtude evaluation we will only look at i.e. 0.9 = 90% of each side of the signal, so the center 80%
-
   const noisefloor = trace.minAmplitude;
   const bandwidth = referenceLteFrequencies.bandwidth;
   let workingSpan;
-  
   
   for(let parameter of trace.parameters ) {
     if(parameter.title === "Span") { //iteratre through the parameters of the trace and pick the span parameter
@@ -225,12 +223,9 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
   
   const stepSize = workingSpan / trace.records.length;
   
-  
-  
   for (let referenceFrequency of referenceLteFrequencies.frequencies) {
     if (!(((referenceFrequency * 1000000) < trace.records[0].frequency) || ((referenceFrequency * 1000000) > trace.records[trace.records.length - 1].frequency)) ) {
       //find the index position that matches the center frequency closest
-      
       const indexOfClosestFrequency = trace.records.findIndex((entry) => Math.abs(entry.frequency - (referenceFrequency * 1000000)) < stepSize);
       
       //find out how many steps we need to fetch for the signal, then only evaluate the center 80%
@@ -262,17 +257,35 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
         } 
         if (sepIsGoodIterator > bandwidthInSteps * 0.8) { //If at least 80% of the records in the signal have good sepperation, the signal is true!
           console.log("I think i see an LTE Signal with " + bandwidth + " at " + referenceFrequency);
-
-          //TODO: Log, then eliminate the signal so further functions can work!
+          
+          const detectedSignal = {
+            type: 'LTE',
+            frequency: referenceFrequency,
+            bandwidth: bandwidth,
+            //TODO: More info needed? Sep to noise floor? Amplitude? 
+          }
+          trace.detectedSignals.push(detectedSignal);
+          
+          for ( let i = signalStart ; i <= signalEnd ; i++ ) {
+            trace.records[i].amplitude = noisefloor;
+          }
+          
         } 
       }
     }
-  } 
+  }
 }
 
 // a GSM Signal has a Bandwith of 200kHz. Neighbouring Signals may be cut off here, TODO Fix
 function identifyAllGSMSignals(trace) {
-  
+
+
+
+
+
+
+
+
   let workingTrace = trace; //we will be mutating this trace later, so we'll create a working copy in the scope of the analysis.
   let workingFrequency = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].frequency;
   let workingAmplitude = trace.maxAmplitude;  //for the first iteration, the max amplitude from the getMinMaxAmplitudes function is used.
@@ -332,7 +345,7 @@ function identifyAllGSMSignals(trace) {
     workingAmplitude = workingTrace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].amplitude;
     workingIndex = trace.records.findIndex((element) => element.frequency === workingFrequency);
 
-  } //end of while. if we pass this point, there is no longer adequate sepperation to identify any signal. the evaluation for this trace is not complete. 
+  } //end of while. if we pass this point, there is no longer adequate sepperation to identify any signal. the evaluation for this trace is complete. 
 }
 
 for (let point of site.points) { 
@@ -356,8 +369,8 @@ for (let point of site.points) {
           console.log("Go for " + snapshot.ref);
           getMinMaxAmplitudes(trace);
           identifyAllLteSignals(trace, frequenciesLte20);
-          // identifyAllLteSignals(trace, frequenciesLte10);
-          // identifyAllLteSignals(trace, frequenciesLte5);
+          identifyAllLteSignals(trace, frequenciesLte10);
+          identifyAllLteSignals(trace, frequenciesLte5);
           //identifyAllGSMSignals(trace);
           
           break;
@@ -366,6 +379,8 @@ for (let point of site.points) {
     }  
   }
 }
+
+//TODO: Hoist the detected signals from the trace object up to the point object as that is where they logically belong.
 
 } catch (error) {
   console.error('there was an error:', error.message);
