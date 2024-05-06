@@ -32,6 +32,7 @@ const siteReference = "Gebäude X";
 *   records: Record[];
 *   minAmplitude: number;
 *   maxAmplitude: number;
+*   detectedSignals: detectedSignal[];
 * }}
 */
 
