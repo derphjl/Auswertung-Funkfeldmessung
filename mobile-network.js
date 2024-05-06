@@ -1,5 +1,6 @@
 import { readdir } from 'node:fs/promises';
 import { readFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 
 const siteReference = "Gebäude X";
 
@@ -53,6 +54,7 @@ const siteReference = "Gebäude X";
 *  building: string;
 *  floor: string;
 *  snapshots: Snapshot[];
+*  detectedSignals: detectedSignal[];
 * }}
 */
 
@@ -65,6 +67,8 @@ const siteReference = "Gebäude X";
 * }}
 */
 
+const carriers = ['Telekom', 'Vodafone', 'Telefonica'];
+
 //Telekom LTE
 const telekom20LTE = {
   carrier: 'Telekom',
@@ -74,12 +78,12 @@ const telekom20LTE = {
 const telekom10LTE = {
   carrier: 'Telekom',
   bandwidth: 10,
-  frequencies: [816, 950, 1830]
+  frequencies: [816, 950, 955, 1830]
 };
 const telekom5LTE = {
   carrier: 'Telekom',
   bandwidth: 5,
-  frequencies: [957.5]
+  frequencies: [947.5]
 };
 
 //Vodafone LTE
@@ -180,6 +184,7 @@ try {
       building: "", //TODO: define building within each folder (i.e. "C" in a file building.txt) and read it here
       floor: "",  //TODO: define floor within each folder (i.e. "EG" in a file floor.txt) and read it here
       snapshots: [],
+      detectedSignals: [],
     }
     
     const directoryEntries = await readdir(`./results/${currentPoint}`);
@@ -293,6 +298,8 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
       const bandwidthInSteps =  ((bandwidth * 1000000) / stepSize); //bandwidth is in MHz and stepSize is in Hz
       const signalStart = indexOfClosestFrequency + Math.floor((( Math.floor( bandwidthInSteps / 2 ) ) * -1 ) * focusFactor);
       const signalEnd = indexOfClosestFrequency + Math.floor(( Math.floor( bandwidthInSteps / 2 ) ) * focusFactor) + 1;
+      const signalEleiminationStart = indexOfClosestFrequency + Math.floor(( Math.ceil( bandwidthInSteps / 2)) * -1);
+      const signalEliminationEnd = indexOfClosestFrequency + Math.floor(( Math.ceil( bandwidthInSteps / 2 )) + 1);
       // console.log("Signal is " + bandwidth + " wide. That is " + bandwidthInSteps + " steps.");
       const minSepForSignalAverage = 3; //minimum sepperation for the average of the whole signal BW against the noise floor in dB
       const minSepForSingleRecord = 2; //minimum sepperation for every record against the noise floor in dB
@@ -326,8 +333,8 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
           }
           trace.detectedSignals.push(detectedSignal);
           
-          for ( let i = signalStart ; i <= signalEnd ; i++ ) {
-            trace.records[i].amplitude = noisefloor;
+          for ( let i = signalEleiminationStart ; i <= signalEliminationEnd ; i++ ) {
+            if (trace.records[i]) { trace.records[i].amplitude = noisefloor };
           }
         } 
       }
@@ -351,7 +358,7 @@ function aquireCarrierGSM(freq) {
 function identifyAllGSMSignals(trace) {
 
   const bandwidth = 0.2;
-  const focusFactor = 15; //here, we "abuse" focusFacor as "smear factor" in order to liberally delete all of the GSM signal.
+  const focusFactor = 10; //here, we "abuse" focusFacor as "smear factor" in order to liberally delete all of the GSM signal.
   let workingSpan;
   for(let parameter of trace.parameters ) {
     if(parameter.title === "Span") { //iteratre through the parameters of the trace and pick the span parameter
@@ -365,7 +372,7 @@ function identifyAllGSMSignals(trace) {
   const stepSize = workingSpan / trace.records.length;
   const bandwidthInSteps =  ((bandwidth * 1000000) / stepSize); //bandwidth is in MHz and stepSize is in Hz
   const noisefloor = trace.minAmplitude;
-  const minSep = 20;
+  const minSep = 6;
   
   while ( (trace.records[indexMaxAmplitude].amplitude - noisefloor) >= minSep ) {
     
@@ -396,8 +403,38 @@ function identifyAllGSMSignals(trace) {
   }
 }
 
+function fetchSummary(point) {
+  //The summary is a Table (Array of Arrays) to be convertet to a CSV. It shall display - for the three carriers - if any of the measurements returned true for both GSM and LTE
+  let summary = [];
+  summary.push([point.ref, 'GSM', 'LTE']); //push the headline with the point reference.
+  for (let carrier of carriers) {
+    let workingArray = [carrier];
+    //check if the decectedSignals contain any GSM. If so, append a checkmark to the "current line", if not, append an X.
+    if (point.detectedSignals.some((entry) => entry.type === 'GSM' && entry.carrier === carrier)){
+      workingArray.push('✅');
+    } else {
+      workingArray.push('❌'); 
+    };
+    if (point.detectedSignals.some((entry) => entry.type === 'LTE' && entry.carrier === carrier)){
+      workingArray.push('✅');
+    } else {
+      workingArray.push('❌'); 
+    };
+    summary.push(workingArray);
+  }
+  return summary;
+}
+
+function objectsToCSV(arr) {
+  const array = [Object.keys(arr[0])].concat(arr)
+  return array.map(row => {
+    return Object.values(row).map(value => {
+      return typeof value === 'string' ? JSON.stringify(value) : value
+    }).toString()
+  }).join('\n')
+}
+
 for (let point of site.points) { 
-  console.log("\n Now working Point " + point.ref);
   for(let snapshot of point.snapshots) {
     for(let trace of snapshot.traces) {
       let isMaxHold = false;
@@ -414,7 +451,6 @@ for (let point of site.points) {
 
         if(isMaxHold && isBelow2) {
           //A relevant trace has been identified and will be passed on to the evaluator functions
-          console.log("Results for " + snapshot.ref);
           getMinMaxAmplitudes(trace);
           for (let listLTE of listAllLTE) { 
             identifyAllLteSignals (trace, listLTE) 
@@ -423,12 +459,13 @@ for (let point of site.points) {
           break;
         }   
       }
-      trace.detectedSignals.length ? console.log(trace.detectedSignals) : '';
+      point.detectedSignals = point.detectedSignals.concat(trace.detectedSignals); //hoist the detectedSignals up to the Point
     }  
   }
+  await writeFile(`./results/${point.ref}.csv`, objectsToCSV(fetchSummary(point)));
 }
 
-//TODO: Hoist the detected signals from the trace object up to the point object as that is where they logically belong.
+console.log("🎉 All point summaries written into ./results/ as CSV files!");   
 
 } catch (error) {
   console.error('there was an error:', error.message);
