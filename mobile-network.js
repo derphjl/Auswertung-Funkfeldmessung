@@ -122,6 +122,24 @@ const listAllLTE = [
   vodafone5LTE,
 ];
 
+const telefonicaStartGSM900 = 925;
+const telefonicaStopGSM900 = 935;
+
+const vodafoneStartGSM900 = 935;
+const vodafoneStopGSM900 = 945;
+
+const telekomStartGSM900 = 945;
+const telekomStopGSM900 = 960;
+
+const telekomStartGSM1800 = 1805;
+const telekomStopGSM1800 = 1835;
+
+const telefonicaStartGSM1800 = 1835; 
+const telefonicaStopGSM1800 = 1855;
+
+const vodafoneStartGSM1800 = 1855;
+const vodafoneStopGSM1800 = 1880;
+
 try {
   //### SECTION 0: Initialize the environment ###
   console.log('📡 Analysis of Radio Field Measurements - Mobile Network Signals 🔍');
@@ -317,7 +335,19 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
   }
 }
 
-// a GSM Signal has a Bandwith of 200kHz. Neighbouring Signals may be cut off here, TODO Fix
+function aquireCarrierGSM(freq) {
+  //for the input freq, check in whose carriers GSM band the channel freq is. freq is passed in Hz. return the carrier
+  let frequency = freq / 1000000;
+
+  if (frequency > telefonicaStartGSM900 && frequency < telefonicaStopGSM900) { return 'Telefonica' };
+  if (frequency > vodafoneStartGSM900 && frequency < vodafoneStopGSM900) { return 'Vodafone' };
+  if (frequency > telekomStartGSM900 && frequency < telekomStopGSM900) { return 'Telekom' };
+  //yes, we are knowingly ignoring GSM-R. Later, if the signal can't be assigned a carrier, it can be disregarded.
+  if (frequency > telefonicaStartGSM1800 && frequency < telefonicaStopGSM1800) { return 'Telefonica' };
+  if (frequency > vodafoneStartGSM1800 && frequency < vodafoneStopGSM1800) { return 'Vodafone' };
+  if (frequency > telekomStartGSM1800 && frequency < telekomStopGSM1800) { return 'Telekom' };
+}
+
 function identifyAllGSMSignals(trace) {
 
   const bandwidth = 0.2;
@@ -336,25 +366,30 @@ function identifyAllGSMSignals(trace) {
   const bandwidthInSteps =  ((bandwidth * 1000000) / stepSize); //bandwidth is in MHz and stepSize is in Hz
   const noisefloor = trace.minAmplitude;
   const minSep = 20;
-
+  
   while ( (trace.records[indexMaxAmplitude].amplitude - noisefloor) >= minSep ) {
-
+    
     let closestChannel = (Math.round(frequencyMaxAmplitude / (bandwidth * 1000000)) * (bandwidth * 1000000));
     let signalStart = indexMaxAmplitude + Math.floor((( Math.floor( bandwidthInSteps / 2 ) ) * -1 ) * focusFactor);
     let signalEnd = indexMaxAmplitude + Math.floor(( Math.floor( bandwidthInSteps / 2 ) ) * focusFactor) + 1;
-
-    const detectedSignal = {
-      type: 'GSM',
-      frequency: closestChannel / 1000000,
-      //TODO: More info needed? Sep to noise floor? Amplitude? 
+    
+    const carrier = aquireCarrierGSM(closestChannel);
+    
+    if (carrier) {
+      const detectedSignal = {
+        type: 'GSM',
+        carrier: carrier,
+        frequency: closestChannel / 1000000,
+        //TODO: More info needed? Sep to noise floor? Amplitude? 
+      }
+      trace.detectedSignals.push(detectedSignal);
     }
-    trace.detectedSignals.push(detectedSignal);
     
     //eliminate the signal (with smear left and right)
     for ( let i = signalStart ; i <= signalEnd ; i++ ) {
       if (trace.records[i]) { trace.records[i].amplitude = noisefloor };
     }
-
+    
     //find the new peak
     frequencyMaxAmplitude = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].frequency;
     indexMaxAmplitude = trace.records.findIndex((element) => element.frequency === frequencyMaxAmplitude);
