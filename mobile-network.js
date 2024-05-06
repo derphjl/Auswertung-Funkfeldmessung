@@ -208,10 +208,10 @@ function getMinMaxAmplitudes(trace) {
 
 function identifyAllLteSignals(trace, referenceLteFrequencies) {
   
-  let focusFactor = 0.9 //an LTE Signal is not uniform but more of a bell curve with a flat middle. For that reason, for amplidtude evaluation we will only look at i.e. 0.9 = 90% of each side of the signal, so the center 80%
+  const focusFactor = 0.9 //an LTE Signal is not uniform but more of a bell curve with a flat middle. For that reason, for amplidtude evaluation we will only look at i.e. 0.9 = 90% of each side of the signal, so the center 80%
 
-  let noisefloor = trace.minAmplitude;
-  let bandwidth = referenceLteFrequencies.bandwidth;
+  const noisefloor = trace.minAmplitude;
+  const bandwidth = referenceLteFrequencies.bandwidth;
   let workingSpan;
   
   
@@ -222,7 +222,7 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
     }
   }
   
-  let stepSize = workingSpan / trace.records.length;
+  const stepSize = workingSpan / trace.records.length;
   
   
   
@@ -230,52 +230,42 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
     if (!(((referenceFrequency * 1000000) < trace.records[0].frequency) || ((referenceFrequency * 1000000) > trace.records[trace.records.length - 1].frequency)) ) {
       //find the index position that matches the center frequency closest
       
-      let indexOfClosestFrequency = trace.records.findIndex((entry) => Math.abs(entry.frequency - (referenceFrequency * 1000000)) < stepSize);
-      console.log("For reference " + referenceFrequency +  " index of closest frequency: " + indexOfClosestFrequency + " with frequency " + trace.records[indexOfClosestFrequency].frequency);
-      
+      const indexOfClosestFrequency = trace.records.findIndex((entry) => Math.abs(entry.frequency - (referenceFrequency * 1000000)) < stepSize);
       
       //find out how many steps we need to fetch for the signal, then only evaluate the center 80%
-      let bandwidthInSteps =  ((bandwidth * 1000000) / stepSize); //bandwidth is in MHz and stepSize is in Hz
-      let startIterate = Math.floor((( Math.floor( bandwidthInSteps / 2 ) ) * -1 ) * focusFactor);
-      let stopIterate = Math.floor(( Math.floor( bandwidthInSteps / 2 ) ) * focusFactor);
-      console.log("Signal is " + bandwidth + " wide. That is " + bandwidthInSteps + " steps.");
-      
+      const bandwidthInSteps =  ((bandwidth * 1000000) / stepSize); //bandwidth is in MHz and stepSize is in Hz
+      const signalStart = indexOfClosestFrequency + Math.floor((( Math.floor( bandwidthInSteps / 2 ) ) * -1 ) * focusFactor);
+      const signalEnd = indexOfClosestFrequency + Math.floor(( Math.floor( bandwidthInSteps / 2 ) ) * focusFactor) + 1;
+      // console.log("Signal is " + bandwidth + " wide. That is " + bandwidthInSteps + " steps.");
+      const minSepForSignalAverage = 4; //minimum sepperation for the average of the whole signal BW against the noise floor in dB
+      const minSepForSingleRecord = 6; //minimum sepperation for every record against the noise floor in dB
       
       //first check: iterate though the signal and average out the amplitude value
       let sumArray = [];
       let sumValue = 0;
-      for ( let i = indexOfClosestFrequency + startIterate ; i <= indexOfClosestFrequency + stopIterate + 1 ; i++ ) {
+      for ( let i = signalStart ; i <= signalEnd ; i++ ) {
         sumArray.push(trace.records[i].amplitude);
         sumValue += Number(trace.records[i].amplitude);
       }
       let averageAmplitudeCurrentSignal = sumValue / sumArray.length; //TODO: There has to be a better way to do this. sumArray is only used as a vessel for length, not ideal!
       let separationToNoiseFloor = Number(averageAmplitudeCurrentSignal) - Number(noisefloor);
-      console.log("Average amplidtude of current signal calculated as:" + averageAmplitudeCurrentSignal);
-      console.log("If the signal is truthful, this signal is " + separationToNoiseFloor + " dB higher than the noise floor");
+      
+      //TODO: Evaluate if a second check is needed to differanciate setups like 10 + 10 from 20. Probably not relevant?
+      
+      if (separationToNoiseFloor > minSepForSignalAverage) { //when the average sepparation is sastisfactory, do: second check: sepperation
+        let sepIsGoodIterator = 0;
+        for ( let i = signalStart ; i <= signalEnd ; i++ ) {
+          if (trace.records[i].amplitude - noisefloor > minSepForSingleRecord) {
+            sepIsGoodIterator++; //if the sepperation is good, count it on the iterator.
+          };
+        } 
+        if (sepIsGoodIterator > bandwidthInSteps * 0.8) { //If at least 80% of the records in the signal have good sepperation, the signal is true!
+          console.log("I think i see an LTE Signal with " + bandwidth + " at " + referenceFrequency);
 
-      //TODO: Evaluate if a second check is needed to differanciate setups like 10 + 10 from 20. Maybe not relevant?
-
-      //second check: with the sepperation, see if every data point has at least 50% of the average sepperation 
-      for ( let i = indexOfClosestFrequency + startIterate ; i <= indexOfClosestFrequency + stopIterate + 1 ; i++ ) {
-        console.log("\na " + trace.records[i].amplitude);
-        console.log("n " + noisefloor);
-        console.log("s " + separationToNoiseFloor);
-        console.log("0.8s " + separationToNoiseFloor * 0.8);
-        if (trace.records[i].amplitude < noisefloor - (0.8 * separationToNoiseFloor)) {
-
-
-          console.log("looks fine!");
-        } else {
-          //console.log("something going on here");
-        };
-        
+          //TODO: Log, then eliminate the signal so further functions can work!
+        } 
       }
-
-
-
-    } else { 
-      //console.log("With reference " + referenceFrequency + " and Trace starting at " + trace.records[0].frequency / 1000000 + " and ending at " + trace.records[trace.records.length - 1].frequency / 1000000 + " skipped trace due to implausibility") 
-    };
+    }
   } 
 }
 
