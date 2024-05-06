@@ -144,6 +144,15 @@ const telefonicaStopGSM1800 = 1855;
 const vodafoneStartGSM1800 = 1855;
 const vodafoneStopGSM1800 = 1880;
 
+const allowedFrequencies = [
+  806000000,
+  939000000,
+  1842500000,
+  2140000000,
+  2655000000,
+  3500000000
+]
+
 try {
   //### SECTION 0: Initialize the environment ###
   console.log('📡 Analysis of Radio Field Measurements - Mobile Network Signals 🔍');
@@ -438,18 +447,18 @@ for (let point of site.points) {
   for(let snapshot of point.snapshots) {
     for(let trace of snapshot.traces) {
       let isMaxHold = false;
-      let isBelow2 = false;
+      let isFrequencyOkay = false;
       for(let parameter of trace.parameters ) {
         
         if(parameter.title === "Trace Mode" && parameter.value === "Max Hold") {
           isMaxHold = true;   //Clear Write Traces are much too unstable to be analyzed and should be disregarded
         }
 
-        if(parameter.title === "Center Frequency" && parameter.value < 2000000000 ) {
-          isBelow2 = true;    //GSM can only occur in the 800/900 and the 1800 Band, anything beyong 2GHz is off limits and can be disregarded
+        if(parameter.title === "Center Frequency" && allowedFrequencies.includes(Number(parameter.value)) ) {
+          isFrequencyOkay = true;    //GSM can only occur in the 800/900 and the 1800 Band, anything beyong 2GHz is off limits and can be disregarded
         }
 
-        if(isMaxHold && isBelow2) {
+        if(isMaxHold && isFrequencyOkay) {
           //A relevant trace has been identified and will be passed on to the evaluator functions
           getMinMaxAmplitudes(trace);
           for (let listLTE of listAllLTE) { 
