@@ -1,6 +1,8 @@
 # Results are to be kept internally, sorry
 /results/*
 
+package-lock.json
+
 # Logs
 logs
 *.log
