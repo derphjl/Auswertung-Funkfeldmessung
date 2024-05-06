@@ -233,8 +233,8 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
       const signalStart = indexOfClosestFrequency + Math.floor((( Math.floor( bandwidthInSteps / 2 ) ) * -1 ) * focusFactor);
       const signalEnd = indexOfClosestFrequency + Math.floor(( Math.floor( bandwidthInSteps / 2 ) ) * focusFactor) + 1;
       // console.log("Signal is " + bandwidth + " wide. That is " + bandwidthInSteps + " steps.");
-      const minSepForSignalAverage = 4; //minimum sepperation for the average of the whole signal BW against the noise floor in dB
-      const minSepForSingleRecord = 6; //minimum sepperation for every record against the noise floor in dB
+      const minSepForSignalAverage = 3; //minimum sepperation for the average of the whole signal BW against the noise floor in dB
+      const minSepForSingleRecord = 2; //minimum sepperation for every record against the noise floor in dB
       
       //first check: iterate though the signal and average out the amplitude value
       let sumArray = [];
@@ -256,8 +256,6 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
           };
         } 
         if (sepIsGoodIterator > bandwidthInSteps * 0.8) { //If at least 80% of the records in the signal have good sepperation, the signal is true!
-          console.log("I think i see an LTE Signal with " + bandwidth + " at " + referenceFrequency);
-          
           const detectedSignal = {
             type: 'LTE',
             frequency: referenceFrequency,
@@ -269,7 +267,6 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
           for ( let i = signalStart ; i <= signalEnd ; i++ ) {
             trace.records[i].amplitude = noisefloor;
           }
-          
         } 
       }
     }
@@ -279,77 +276,49 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
 // a GSM Signal has a Bandwith of 200kHz. Neighbouring Signals may be cut off here, TODO Fix
 function identifyAllGSMSignals(trace) {
 
-
-
-
-
-
-
-
-  let workingTrace = trace; //we will be mutating this trace later, so we'll create a working copy in the scope of the analysis.
-  let workingFrequency = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].frequency;
-  let workingAmplitude = trace.maxAmplitude;  //for the first iteration, the max amplitude from the getMinMaxAmplitudes function is used.
-  let workingIndex = trace.records.findIndex((element) => element.frequency === workingFrequency);
-  let signalWidth = 400000; //with RBW = 300kHz setting the signal width smaller does not make any sense. TODO: find a value that works well.
-  let trueSignalWidth = 200000;
+  const bandwidth = 0.2;
+  const focusFactor = 15; //here, we "abuse" focusFacor as "smear factor" in order to liberally delete all of the GSM signal.
   let workingSpan;
-  let amplitudeIsNoticableThreshold = 0.9; //this ratio has to be statisfied for the detection to contunue (0.1 = only comically strong signals will be detected, 0.99 = every teeny blip will be detected)
-  let signalIsNotFlukeValue = 0.95; //when a peak is being detected, we take it and the values around it and average it out. This average must be withing i.e. 95% of the peak value to not be a fluke (0.999 = almost everything will count as a fluke, 0.1 = this calculation might as well not exist and would only disqualify values that have a physically impobbible drop in amplitude from one record to the next.)
-
-  for(let parameter of workingTrace.parameters ) {
+  for(let parameter of trace.parameters ) {
     if(parameter.title === "Span") { //iteratre through the parameters of the trace and pick the span parameter
       workingSpan = parameter.value;
       break;  //once the working span has been found, we can break out of the parameter iteration.
     }
   }
-
-  //check how many records we need to delete to hold the whole signal    
-  let stepSize = workingSpan / workingTrace.records.length;
-  let stepAmmount = Math.ceil(( signalWidth / 2 ) / stepSize);
+  let frequencyMaxAmplitude = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].frequency;
+  let indexMaxAmplitude = trace.records.findIndex((element) => element.frequency === frequencyMaxAmplitude);
   
-  while (workingAmplitude > Number(trace.minAmplitude) * amplitudeIsNoticableThreshold) {    
-    //if we don't "have enough space", meaning that the max amplitude is too close to the beginning or end of the data, there are fallbacks required. With the spectrum rider, there are always 710 data points.
-    //TODO: In that case, dont just give up, maxbe find the max value in a workable context? maybe dial down the analysis or make it one-sided? idk.
-    if (workingIndex > 5 || workingIndex < 705){
-      let addition = 0; //Average out the working position with the ones around it (one left, one right). This makes sure the measurement is not a fluke. The average should be smaller, but not too small
-      for (let i = -1 ; i < 2 ; i++){
-        addition += Number(workingTrace.records[workingIndex + i].amplitude);
-      }
-      let averageAroundIndex = addition / 3;
+  const stepSize = workingSpan / trace.records.length;
+  const bandwidthInSteps =  ((bandwidth * 1000000) / stepSize); //bandwidth is in MHz and stepSize is in Hz
+  const noisefloor = trace.minAmplitude;
+  const minSep = 20;
 
-      if ((workingTrace.records[workingIndex].amplitude / averageAroundIndex) > signalIsNotFlukeValue){
+  while ( (trace.records[indexMaxAmplitude].amplitude - noisefloor) >= minSep ) {
 
-          let sepperationValueBelow = workingTrace.records[workingIndex].amplitude / workingTrace.records[workingIndex - stepAmmount].amplitude;
-          let sepperationValueAbove = workingTrace.records[workingIndex].amplitude / workingTrace.records[workingIndex + stepAmmount].amplitude;
+    let closestChannel = (Math.round(frequencyMaxAmplitude / (bandwidth * 1000000)) * (bandwidth * 1000000));
+    let signalStart = indexMaxAmplitude + Math.floor((( Math.floor( bandwidthInSteps / 2 ) ) * -1 ) * focusFactor);
+    let signalEnd = indexMaxAmplitude + Math.floor(( Math.floor( bandwidthInSteps / 2 ) ) * focusFactor) + 1;
 
-          if ((sepperationValueAbove < 0.9) && (sepperationValueBelow) < 0.9) {
-            let candidateFrequency = workingTrace.records[workingIndex].frequency;
-            let candidateFrequencyOnChannel = ((Math.round(candidateFrequency / trueSignalWidth) * trueSignalWidth)) ;
-            console.log("Sepperation is good! A valid GSM signal seems to be at " + candidateFrequencyOnChannel);
-
-          }
-      } else {
-        // console.log("💥 Not plausible: The amplitude at frequency " + Math.trunc(workingFrequency/1000)/1000 + " MHz violates the ratio test.");
-      }
-    } else {
-      //console.log("💥 Problematic! The max-point is too close to the edge. Ignoring for now.")
-    };
-
-    //cleanup: remove the peak some signal around it. this enables us to find the next candidate for max amplitude detection    
-    for (let i = -stepAmmount ; i <= stepAmmount ; i++ ) {
-      if (workingTrace.records[workingIndex + i]) { workingTrace.records[workingIndex + i].amplitude = workingTrace.minAmplitude };  //reduce the signal down to the noise floor
+    const detectedSignal = {
+      type: 'GSM',
+      frequency: closestChannel / 1000000,
+      //TODO: More info needed? Sep to noise floor? Amplitude? 
+    }
+    trace.detectedSignals.push(detectedSignal);
+    
+    //eliminate the signal (with smear left and right)
+    for ( let i = signalStart ; i <= signalEnd ; i++ ) {
+      if (trace.records[i]) { trace.records[i].amplitude = noisefloor };
     }
 
-    //fetch the new value for max amplitude, print.
-    workingFrequency = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].frequency;
-    workingAmplitude = workingTrace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].amplitude;
-    workingIndex = trace.records.findIndex((element) => element.frequency === workingFrequency);
-
-  } //end of while. if we pass this point, there is no longer adequate sepperation to identify any signal. the evaluation for this trace is complete. 
+    //find the new peak
+    frequencyMaxAmplitude = trace.records.toSorted((firstItem, secondItem) => secondItem.amplitude - firstItem.amplitude)[0].frequency;
+    indexMaxAmplitude = trace.records.findIndex((element) => element.frequency === frequencyMaxAmplitude);
+  }
 }
 
 for (let point of site.points) { 
-  console.log("\n Now at Point " + point.ref);
+  console.log("\n Now working Point " + point.ref);
   for(let snapshot of point.snapshots) {
     for(let trace of snapshot.traces) {
       let isMaxHold = false;
@@ -366,16 +335,17 @@ for (let point of site.points) {
 
         if(isMaxHold && isBelow2) {
           //A relevant trace has been identified and will be passed on to the evaluator functions
-          console.log("Go for " + snapshot.ref);
+          console.log("Results for " + snapshot.ref);
           getMinMaxAmplitudes(trace);
           identifyAllLteSignals(trace, frequenciesLte20);
           identifyAllLteSignals(trace, frequenciesLte10);
           identifyAllLteSignals(trace, frequenciesLte5);
-          //identifyAllGSMSignals(trace);
+          identifyAllGSMSignals(trace);
           
           break;
-        }        
+        }   
       }
+      trace.detectedSignals.length ? console.log(trace.detectedSignals) : '';
     }  
   }
 }
