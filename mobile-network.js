@@ -65,19 +65,62 @@ const siteReference = "Gebäude X";
 * }}
 */
 
-//TODO: check these, make sure only BTM (downstream) frequencies are listed.
-const frequenciesLte20 = {
+//Telekom LTE
+const telekom20LTE = {
+  carrier: 'Telekom',
   bandwidth: 20,
-  frequencies: [1462, 1482, 1815, 1845, 1865, 2120, 2140, 2160, 2630, 2650, 2670],
+  frequencies: [1462, 1815, 2160, 2650]
 };
-const frequenciesLte10 = {
+const telekom10LTE = {
+  carrier: 'Telekom',
   bandwidth: 10,
-  frequencies: [796, 806, 816, 930, 940, 950, 1830, 2685],
+  frequencies: [816, 950, 1830]
 };
-const frequenciesLte5 = {
+const telekom5LTE = {
+  carrier: 'Telekom',
   bandwidth: 5,
-  frequencies: [957.5, 1875.5],
+  frequencies: [957.5]
 };
+
+//Vodafone LTE
+const vodafone20LTE = {
+  carrier: 'Vodafone',
+  bandwidth: 20,
+  frequencies: [1482, 1865, 2120, 2630]
+};
+const vodafone10LTE = {
+  carrier: 'Vodafone',
+  bandwidth: 10,
+  frequencies: [806, 940]
+};
+const vodafone5LTE = {
+  carrier: 'Vodafone',
+  bandwidth: 5,
+  frequencies: [1875.5]
+};
+
+//Telefonica LTE
+const telefonica20LTE = {
+  carrier: 'Telefonica',
+  bandwidth: 20,
+  frequencies: [1845, 2140, 2670]
+};
+const telefonica10LTE = {
+  carrier: 'Telefonica',
+  bandwidth: 10,
+  frequencies: [796, 930, 2135, 2685] //2135 is already relevant in preperation for 2140-2150 going to drillisch starting 01.01.2025
+};
+
+const listAllLTE = [
+  telekom20LTE,
+  vodafone20LTE,
+  telefonica20LTE,
+  telekom10LTE,
+  vodafone10LTE,
+  telefonica10LTE,
+  telekom5LTE,
+  vodafone5LTE,
+];
 
 try {
   //### SECTION 0: Initialize the environment ###
@@ -258,6 +301,7 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
         if (sepIsGoodIterator > bandwidthInSteps * 0.8) { //If at least 80% of the records in the signal have good sepperation, the signal is true!
           const detectedSignal = {
             type: 'LTE',
+            carrier: referenceLteFrequencies.carrier,
             frequency: referenceFrequency,
             bandwidth: bandwidth,
             //TODO: More info needed? Sep to noise floor? Amplitude? 
@@ -337,11 +381,10 @@ for (let point of site.points) {
           //A relevant trace has been identified and will be passed on to the evaluator functions
           console.log("Results for " + snapshot.ref);
           getMinMaxAmplitudes(trace);
-          identifyAllLteSignals(trace, frequenciesLte20);
-          identifyAllLteSignals(trace, frequenciesLte10);
-          identifyAllLteSignals(trace, frequenciesLte5);
+          for (let listLTE of listAllLTE) { 
+            identifyAllLteSignals (trace, listLTE) 
+          };
           identifyAllGSMSignals(trace);
-          
           break;
         }   
       }
