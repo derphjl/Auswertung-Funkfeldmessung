@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { writeFile } from 'node:fs/promises';
 import { opendir } from 'node:fs/promises';
 import { mkdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { jsPDF } from "jspdf";
 
 //import { jsPDF } from 'jspdf';
@@ -276,7 +277,7 @@ try {
   site.points.push(point); //push the current measurement point into the array of points in site
   snapshots.length ? '' : console.log("⚠️  Folder for Point " + currentPoint + " cotains no valid snapshots!");
 } // * end of point *
-console.log("🎉 All points transfered into defined data structure!");   
+console.log("🤓 All points transfered into defined data structure!");   
 
 /** 
 *  ##############################################################################################  
@@ -486,16 +487,11 @@ for (let point of site.points) {
       point.detectedSignals = point.detectedSignals.concat(trace.detectedSignals); //hoist the detectedSignals up to the Point
     }  
   }
-  // // const csvFolderExists = await opendir(`./results/csv`);
-  // this approach doesn't work and ignores point 0?! TODO fix
-  // const csvFolderExists = await opendir(`./results/csv`).catch((err) => {
-  //   console.log("folder does not yet exist, creating...");
-  //   mkdirSync(`./results/csv`);
-  // });
-  
-  // if (csvFolderExists) {
-  //   await writeFile(`./results/csv/${point.ref}.csv`, objectsToCSV(createSummaryAsCSV(point))); //createSummaryAsCSV is built such that it takes a single point, so iteration is required.
-  // }
+}
+
+for (let point of site.points) {
+  if (!existsSync('./results/csv')) mkdirSync(`./results/csv`);
+  await writeFile(`./results/csv/${point.ref}.csv`, objectsToCSV(createSummaryAsCSV(point))); //createSummaryAsCSV is built such that it takes a single point, so iteration is required.
 }
 
 console.log("🎉 All point summaries written into ./results/csv/ as CSV files! Now generating PDF report...");   
