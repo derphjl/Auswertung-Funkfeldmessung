@@ -4,6 +4,9 @@
 # CSV exports
 /exportCSV/*
 
+# internal assets such as logo etc.
+/assets/*
+
 # Report output, you'd have to produce this yourself, too.
 report.pdf
 
