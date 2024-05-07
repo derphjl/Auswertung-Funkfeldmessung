@@ -424,7 +424,7 @@ function createSummaryAsPDF() {
   const doc = new jsPDF();
   
   doc.text("Hello world!", 10, 10);
-  doc.save("./results/report.pdf");
+  doc.save("./report.pdf");
   
 }
 
@@ -490,14 +490,15 @@ for (let point of site.points) {
 }
 
 for (let point of site.points) {
-  if (!existsSync('./results/csv')) mkdirSync(`./results/csv`);
-  await writeFile(`./results/csv/${point.ref}.csv`, objectsToCSV(createSummaryAsCSV(point))); //createSummaryAsCSV is built such that it takes a single point, so iteration is required.
+  if (!existsSync('./exportCSV')) mkdirSync(`./exportCSV`);
+  await writeFile(`./exportCSV/${point.ref}.csv`, objectsToCSV(createSummaryAsCSV(point))); //createSummaryAsCSV is built such that it takes a single point, so iteration is required.
 }
 
-console.log("🎉 All point summaries written into ./results/csv/ as CSV files! Now generating PDF report...");   
+console.log("🎉 All point summaries written into ./exportCSV/ as CSV files! Now generating PDF report...");   
 
 createSummaryAsPDF(points);
 
+console.log("💌 Report PDF created, saved as ./report.pdf");   
 
 } catch (error) {
   console.error('there was an error:', error.message);

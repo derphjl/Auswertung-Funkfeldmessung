@@ -1,6 +1,13 @@
-# Results are to be kept internally, sorry
+# Results are to be kept internal, sorry
 /results/*
 
+# CSV exports
+/exportCSV/*
+
+# Report output, you'd have to produce this yourself, too.
+report.pdf
+
+# what?
 package-lock.json
 
 # Logs
