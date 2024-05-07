@@ -92,6 +92,7 @@ try {
     }
     site.points.push(point); //push the current measurement point into the array of points in site
 
+    console.log(`In ${point.ref} i saw ${point.networks.length} networks`)
     snapshots.length ? '' : console.log("⚠️  Folder for Point " + currentPoint + " cotains no valid snapshots!");
   } // * end of point *
   console.log("🎉 All available data transfered into defined data structure!\n");   
@@ -113,6 +114,7 @@ for (let point of site.points ) {
       width : network['Width (Range)'],
       atpoint : point.ref,
     }
+
     exportNetworkList.push(exportNetwork);
   }
 }
@@ -140,14 +142,30 @@ reducedBySsidExportNetworkList = exportNetworkList.filter((longListEntry) => {
   }
 });
 exportNetworkList.unshift(networkListHeader); //add the header back to the exportNetworkList
-exportNetworkList.unshift(reducedBySsidExportNetworkList); //add the header to the short list, too.
+reducedByBssidExportNetworkList.unshift(networkListHeader); //add the header to the short list, too.
+reducedBySsidExportNetworkList.unshift(networkListHeader);
 
 console.log("📋 Working on " + exportNetworkList.length + " input measurements.");
 console.log("⚙️  I found " + reducedByBssidExportNetworkList.length + " unique BSSIDs (Hardware Access Points)");
 console.log("🛜  I found " + reducedBySsidExportNetworkList.length + " unique SSIDs (Networks)\n");
 
-  await writeFile('./results/allWifi.csv', objectsToCSV(reducedBySsidExportNetworkList));
-  console.log("☑️  Export of unique SSID list complete!\n");
+let shortListOfPopularNetworks = [];
+
+console.log("🏆 This is how often I saw the most popular networks:")
+for (let networkWithUniqueSSID of reducedBySsidExportNetworkList) {
+  if (exportNetworkList.filter((entry) => entry.ssid === networkWithUniqueSSID.ssid).length > 30) {
+    console.log(`I saw ${networkWithUniqueSSID.ssid} a total of ${exportNetworkList.filter((entry) => entry.ssid === networkWithUniqueSSID.ssid).length} times`);
+    shortListOfPopularNetworks.push(networkWithUniqueSSID.ssid);
+  }
+}
+
+for (let popularNetwork of shortListOfPopularNetworks) {
+  //go through all point and filter the ones where the popularNetwork does _not_ exist. log them.
+  //wouldn't "reducing" the recieved amplitude be sensical? so, signals below a certain threshhold are "not good enough" and won't even be considered? this would have to be done on the snapshot level.
+}
+
+  // await writeFile('./results/allWifi.csv', objectsToCSV(reducedBySsidExportNetworkList));
+  // console.log("☑️  Export of unique SSID list complete!\n");
 
   function objectsToCSV(arr) {
     const array = [Object.keys(arr[0])].concat(arr)
