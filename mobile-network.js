@@ -1,6 +1,12 @@
 import { readdir } from 'node:fs/promises';
 import { readFile } from 'node:fs/promises';
 import { writeFile } from 'node:fs/promises';
+import { opendir } from 'node:fs/promises';
+import { mkdirSync } from 'node:fs';
+import { jsPDF } from "jspdf";
+
+//import { jsPDF } from 'jspdf';
+//const { jsPDF } = require("jspdf"); // will automatically load the node version
 
 const siteReference = "Gebäude X";
 
@@ -354,7 +360,7 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
 function aquireCarrierGSM(freq) {
   //for the input freq, check in whose carriers GSM band the channel freq is. freq is passed in Hz. return the carrier
   let frequency = freq / 1000000;
-
+  
   if (frequency > telefonicaStartGSM900 && frequency < telefonicaStopGSM900) { return 'Telefonica' };
   if (frequency > vodafoneStartGSM900 && frequency < vodafoneStopGSM900) { return 'Vodafone' };
   if (frequency > telekomStartGSM900 && frequency < telekomStopGSM900) { return 'Telekom' };
@@ -365,7 +371,7 @@ function aquireCarrierGSM(freq) {
 }
 
 function identifyAllGSMSignals(trace) {
-
+  
   const bandwidth = 0.2;
   const focusFactor = 10; //here, we "abuse" focusFacor as "smear factor" in order to liberally delete all of the GSM signal.
   let workingSpan;
@@ -412,7 +418,16 @@ function identifyAllGSMSignals(trace) {
   }
 }
 
-function fetchSummary(point) {
+function createSummaryAsPDF() {
+  
+  const doc = new jsPDF();
+  
+  doc.text("Hello world!", 10, 10);
+  doc.save("./results/report.pdf");
+  
+}
+
+function createSummaryAsCSV(point) {
   //The summary is a Table (Array of Arrays) to be convertet to a CSV. It shall display - for the three carriers - if any of the measurements returned true for both GSM and LTE
   let summary = [];
   summary.push([point.ref, 'GSM', 'LTE']); //push the headline with the point reference.
@@ -453,11 +468,11 @@ for (let point of site.points) {
         if(parameter.title === "Trace Mode" && parameter.value === "Max Hold") {
           isMaxHold = true;   //Clear Write Traces are much too unstable to be analyzed and should be disregarded
         }
-
+        
         if(parameter.title === "Center Frequency" && allowedFrequencies.includes(Number(parameter.value)) ) {
           isFrequencyOkay = true;    //GSM can only occur in the 800/900 and the 1800 Band, anything beyong 2GHz is off limits and can be disregarded
         }
-
+        
         if(isMaxHold && isFrequencyOkay) {
           //A relevant trace has been identified and will be passed on to the evaluator functions
           getMinMaxAmplitudes(trace);
@@ -471,10 +486,22 @@ for (let point of site.points) {
       point.detectedSignals = point.detectedSignals.concat(trace.detectedSignals); //hoist the detectedSignals up to the Point
     }  
   }
-  await writeFile(`./results/${point.ref}.csv`, objectsToCSV(fetchSummary(point)));
+  // // const csvFolderExists = await opendir(`./results/csv`);
+  // this approach doesn't work and ignores point 0?! TODO fix
+  // const csvFolderExists = await opendir(`./results/csv`).catch((err) => {
+  //   console.log("folder does not yet exist, creating...");
+  //   mkdirSync(`./results/csv`);
+  // });
+  
+  // if (csvFolderExists) {
+  //   await writeFile(`./results/csv/${point.ref}.csv`, objectsToCSV(createSummaryAsCSV(point))); //createSummaryAsCSV is built such that it takes a single point, so iteration is required.
+  // }
 }
 
-console.log("🎉 All point summaries written into ./results/ as CSV files!");   
+console.log("🎉 All point summaries written into ./results/csv/ as CSV files! Now generating PDF report...");   
+
+createSummaryAsPDF(points);
+
 
 } catch (error) {
   console.error('there was an error:', error.message);
