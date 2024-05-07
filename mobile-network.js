@@ -345,6 +345,7 @@ function identifyAllLteSignals(trace, referenceLteFrequencies) {
             carrier: referenceLteFrequencies.carrier,
             frequency: referenceFrequency,
             bandwidth: bandwidth,
+            snr: separationToNoiseFloor,
             //TODO: More info needed? Sep to noise floor? Amplitude? 
           }
           trace.detectedSignals.push(detectedSignal);
@@ -403,7 +404,7 @@ function identifyAllGSMSignals(trace) {
         type: 'GSM',
         carrier: carrier,
         frequency: closestChannel / 1000000,
-        //TODO: More info needed? Sep to noise floor? Amplitude? 
+        snr: trace.records[indexMaxAmplitude].amplitude - noisefloor,
       }
       trace.detectedSignals.push(detectedSignal);
     }
@@ -419,11 +420,76 @@ function identifyAllGSMSignals(trace) {
   }
 }
 
-function createSummaryAsPDF() {
+function createSummaryAsPDF(points) {
   
   const doc = new jsPDF();
+
+  let tempPagePoint = 75;
   
-  doc.text("Hello world!", 10, 10);
+  //insert the logo in the top right
+  //TODO: figure out why this does not work. using a rect in the meantime
+  //doc.addImage('./assets/logo.jpg', 'JPEG', 10, 10, 100, 100);
+  doc.rect(174, 10, 25, 36);
+
+  //write the heading
+  doc.setFont('helvetica');
+  doc.setFontSize(12);
+  doc.text(`Bericht der Mobilfunkversorgung an Messpunkt`, 15, 30);
+  
+  //draw the rectangle for 'telekom' in purple-ish-magenta-ish
+  doc.setFillColor('#FFCCFF');
+  doc.rect(5, 55, 200, 70, 'f');
+
+  //draw the rectangle for 'vodafone' in red
+  doc.setFillColor('#FFCCCC');
+  doc.rect(5, 130, 200, 70, 'f');
+  
+  //draw the rectangle for 'telefonica' in blue
+  doc.setFillColor('#CCCCFF');
+  doc.rect(5, 205, 200, 70, 'f');
+
+
+  for (let i = 0; i < 3; i++) {
+    doc.setFont('courier');
+    doc.setFontSize(24);
+    doc.text(carriers[i], 9,    (64 + i * 75));
+    doc.text('GSM',       9,    (75 + i * 75));
+    doc.text('LTE',       80,   (75 + i * 75));
+    doc.text('800',       80,   (90 + i * 75));
+    doc.text('900',       80,   (105 + i * 75));
+    doc.text('1400',      80,   (120 + i * 75));
+    doc.text('1800',      145,  (90 + i * 75));
+    doc.text('2100',      145,  (105 + i * 75));
+    doc.text('2600',      145,  (120 + i * 75));
+  };
+
+  for (let i = 0; i < 3; i++) {
+    doc.setFont('courier');
+    doc.setFontSize(12);
+    doc.text('(xx dB)',  120,  (90 + i * 75));
+    doc.text('(xx dB)',  120,  (105 + i * 75));
+    doc.text('(xx dB)',  120,  (120 + i * 75));
+    doc.text('(xx dB)',  185,  (90 + i * 75));
+    doc.text('(xx dB)',  185,  (105 + i * 75));
+    doc.text('(xx dB)',  185,  (120 + i * 75));
+  };
+
+  for (let i = 0; i < 3; i++) {
+
+  };
+
+  for (let pagePoint of points) {
+    //
+  }
+
+
+  //insert the point number in the top right
+  doc.setTextColor('#AAA');
+  doc.setFont('courier');
+  doc.setFontSize(110);
+  doc.text(`${tempPagePoint}`, 110, 40);
+
+
   doc.save("./report.pdf");
   
 }
@@ -494,7 +560,7 @@ for (let point of site.points) {
   await writeFile(`./exportCSV/${point.ref}.csv`, objectsToCSV(createSummaryAsCSV(point))); //createSummaryAsCSV is built such that it takes a single point, so iteration is required.
 }
 
-console.log("🎉 All point summaries written into ./exportCSV/ as CSV files! Now generating PDF report...");   
+console.log("🎉 All point summaries written into ./exportCSV as CSV files!");   
 
 createSummaryAsPDF(points);
 
