@@ -149,20 +149,34 @@ console.log("📋 Working on " + exportNetworkList.length + " input measurements
 console.log("⚙️  I found " + reducedByBssidExportNetworkList.length + " unique BSSIDs (Hardware Access Points)");
 console.log("🛜  I found " + reducedBySsidExportNetworkList.length + " unique SSIDs (Networks)\n");
 
-let shortListOfPopularNetworks = [];
+let shortListOfPopularNetworks = []
 
 console.log("🏆 This is how often I saw the most popular networks:")
 for (let networkWithUniqueSSID of reducedBySsidExportNetworkList) {
   if (exportNetworkList.filter((entry) => entry.ssid === networkWithUniqueSSID.ssid).length > 30) {
     console.log(`I saw ${networkWithUniqueSSID.ssid} a total of ${exportNetworkList.filter((entry) => entry.ssid === networkWithUniqueSSID.ssid).length} times`);
-    shortListOfPopularNetworks.push(networkWithUniqueSSID.ssid);
+    
+    let popularNetwork = {
+      ssid: networkWithUniqueSSID.ssid,
+      missingAtPoints: [],
+    }
+    shortListOfPopularNetworks.push(popularNetwork);
   }
 }
 
 for (let popularNetwork of shortListOfPopularNetworks) {
-  //go through all point and filter the ones where the popularNetwork does _not_ exist. log them.
-  //wouldn't "reducing" the recieved amplitude be sensical? so, signals below a certain threshhold are "not good enough" and won't even be considered? this would have to be done on the snapshot level.
+  //for a popular network, go through all points
+  for (let point of site.points) {
+    //at least one of the networks in the point has to statisfy ssid === popularNetwork. if none do,
+    if (!point.networks.some((entry) => entry.SSID === popularNetwork.ssid)) {
+      popularNetwork.missingAtPoints.push(point.ref);
+    };
+    //go through all point and filter the ones where the popularNetwork does _not_ exist. log them.
+    //wouldn't "reducing" the recieved amplitude be sensical? so, signals below a certain threshhold are "not good enough" and won't even be considered? this would have to be done on the snapshot level.
+  }
 }
+
+console.log(shortListOfPopularNetworks);
 
   // await writeFile('./results/allWifi.csv', objectsToCSV(reducedBySsidExportNetworkList));
   // console.log("☑️  Export of unique SSID list complete!\n");
