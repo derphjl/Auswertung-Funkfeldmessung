@@ -78,46 +78,46 @@ const carriers = ['Telekom', 'Vodafone', 'Telefonica'];
 
 //Telekom LTE
 const telekom20LTE = {
-  carrier: 'Telekom',
+  carrier: carriers[0],
   bandwidth: 20,
   frequencies: [1462, 1815, 2160, 2650]
 };
 const telekom10LTE = {
-  carrier: 'Telekom',
+  carrier: carriers[0],
   bandwidth: 10,
   frequencies: [816, 950, 955, 1830]
 };
 const telekom5LTE = {
-  carrier: 'Telekom',
+  carrier: carriers[0],
   bandwidth: 5,
   frequencies: [947.5]
 };
 
 //Vodafone LTE
 const vodafone20LTE = {
-  carrier: 'Vodafone',
+  carrier: carriers[1],
   bandwidth: 20,
   frequencies: [1482, 1865, 2120, 2630]
 };
 const vodafone10LTE = {
-  carrier: 'Vodafone',
+  carrier: carriers[1],
   bandwidth: 10,
   frequencies: [806, 940]
 };
 const vodafone5LTE = {
-  carrier: 'Vodafone',
+  carrier: carriers[1],
   bandwidth: 5,
   frequencies: [1875.5]
 };
 
 //Telefonica LTE
 const telefonica20LTE = {
-  carrier: 'Telefonica',
+  carrier: carriers[2],
   bandwidth: 20,
   frequencies: [1845, 2140, 2670]
 };
 const telefonica10LTE = {
-  carrier: 'Telefonica',
+  carrier: carriers[2],
   bandwidth: 10,
   frequencies: [796, 930, 2135, 2685] //2135 is already relevant in preperation for 2140-2150 going to drillisch starting 01.01.2025
 };
@@ -389,7 +389,7 @@ function identifyAllGSMSignals(trace) {
   const stepSize = workingSpan / trace.records.length;
   const bandwidthInSteps =  ((bandwidth * 1000000) / stepSize); //bandwidth is in MHz and stepSize is in Hz
   const noisefloor = trace.minAmplitude;
-  const minSep = 6;
+  const minSep = 10;
   
   while ( (trace.records[indexMaxAmplitude].amplitude - noisefloor) >= minSep ) {
     
@@ -419,6 +419,15 @@ function identifyAllGSMSignals(trace) {
     indexMaxAmplitude = trace.records.findIndex((element) => element.frequency === frequencyMaxAmplitude);
   }
 }
+
+function findAllPointsWithNoGSMbyCarrier(carrier) {
+  let pointsWithNoGSM = [];
+  for (let point of site.points) {
+    let pointContainsCarrierGSM = point.detectedSignals.some((entry) => entry.type === 'GSM' && entry.carrier === carrier );
+    if (!pointContainsCarrierGSM) { pointsWithNoGSM.push(point.ref) };
+  }
+  return pointsWithNoGSM;
+};
 
 function createSummaryAsPDF(points) {
   
@@ -553,6 +562,12 @@ for (let point of site.points) {
       point.detectedSignals = point.detectedSignals.concat(trace.detectedSignals); //hoist the detectedSignals up to the Point
     }  
   }
+}
+
+for (let carrier of carriers) {
+  let pointsWithNoGSM = findAllPointsWithNoGSMbyCarrier(carrier);
+  console.log(`For carrier ${carrier} I fount no GSM signal at the following points:`);
+  console.log(pointsWithNoGSM);
 }
 
 for (let point of site.points) {
